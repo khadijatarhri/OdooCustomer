@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    # Ou utiliser l'image officielle directement :
+    # image: odoo:18
+    container_name: odoo18
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+    volumes:
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+      - ./data:/var/lib/odoo
+      - ./logs:/var/log/odoo
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo_password
+    restart: unless-stopped
+    command: odoo --dev=reload,qweb,werkzeug,xml
+
+  db:
+    image: postgres:15
+    container_name: odoo18-db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo_password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Optionnel : pgAdmin pour gérer la base de données
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: odoo18-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgresql:
+  odoo-data:
