@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<odoo>  
+    <template id="chatbot_widget" name="Chatbot Widget">  
+        <div id="chatbot-container" class="chatbot-container">  
+            <div id="chatbot-header">  
+                <h4>Assistant Restaurant</h4>  
+            </div>  
+            <div id="chatbot-messages"></div>  
+            <div id="chatbot-input">  
+                <input type="text" id="message-input" placeholder="Tapez votre message..."/>  
+                <button id="send-button">Envoyer</button>  
+            </div>  
+        </div>  
+    </template>  
+  
+    <template id="restaurant_chatbot_page" name="Page Chatbot Restaurant">  
+        <t t-call="website.layout">  
+            <div class="container">  
+                <h1>Chatbot - <span t-esc="restaurant.name"/></h1>  
+                <t t-call="restaurant_chatbot.chatbot_widget"/>  
+            </div>  
+        </t>  
+    </template>  
+</odoo>

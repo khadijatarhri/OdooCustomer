@@ -1,6 +1,13 @@
 version: '3.8'
 
 services:
+
+  db-restaurant1:  
+    image: postgres:15  
+    environment:  
+      - POSTGRES_DB=restaurant1_db  
+      - POSTGRES_USER=odoo  
+      - POSTGRES_PASSWORD=odoo_password
   web:
     build: .
     # Ou utiliser l'image officielle directement :
@@ -9,7 +16,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+      - "8070:8069"
     volumes:
       - ./config:/etc/odoo
       - ./addons:/mnt/extra-addons
@@ -19,6 +26,8 @@ services:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo_password
+      - OPENAI_API_KEY=votre_cle_api_openai
+
     restart: unless-stopped
     command: odoo --dev=reload,qweb,werkzeug,xml
 
@@ -33,7 +42,7 @@ services:
     volumes:
       - ./postgresql:/var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "5433:5432"
     restart: unless-stopped
 
   # Optionnel : pgAdmin pour gérer la base de données
