@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>  
 <odoo>  
     <data noupdate="1">  
-        <!-- Groupe VRP Manager -->  
-        <record id="group_vrp_manager" model="res.groups">  
-            <field name="name">VRP Manager</field>  
-            <field name="category_id" ref="base.module_category_operations"/>  
-            <field name="implied_ids" eval="[(4, ref('group_vrp_user'))]"/>  
-        </record>  
+        <!-- Groupe VRP User (défini en premier) -->    
+        <record id="group_vrp_user" model="res.groups">    
+            <field name="name">VRP User</field>    
+            <field name="category_id" ref="base.module_category_operations"/>    
+        </record>    
   
-        <!-- Groupe VRP User -->  
-        <record id="group_vrp_user" model="res.groups">  
-            <field name="name">VRP User</field>  
-            <field name="category_id" ref="base.module_category_operations"/>  
-        </record>  
+        <!-- Groupe VRP Manager (référence group_vrp_user) -->    
+        <record id="group_vrp_manager" model="res.groups">    
+            <field name="name">VRP Manager</field>    
+            <field name="category_id" ref="base.module_category_operations"/>    
+            <field name="implied_ids" eval="[(4, ref('group_vrp_user'))]"/>    
+        </record>    
   
-        <!-- Règles de sécurité pour les véhicules -->  
+        <!-- Règles de sécurité pour les véhicules  
         <record id="vrp_vehicle_rule" model="ir.rule">  
             <field name="name">VRP Vehicle Access</field>  
             <field name="model_id" ref="model_vrp_vehicle"/>  
@@ -25,7 +25,7 @@
             <field name="perm_unlink" eval="1"/>  
         </record>  
   
-        <!-- Règles de sécurité pour les clients -->  
+         Règles de sécurité pour les clients - 
         <record id="vrp_customer_rule" model="ir.rule">  
             <field name="name">VRP Customer Access</field>  
             <field name="model_id" ref="model_vrp_customer"/>  
@@ -34,6 +34,7 @@
             <field name="perm_write" eval="1"/>  
             <field name="perm_create" eval="1"/>  
             <field name="perm_unlink" eval="1"/>  
-        </record>  
+        </record> 
+        -->  
     </data>  
 </odoo>

@@ -1,92 +1,93 @@
-<?xml version="1.0" encoding="utf-8"?>  
-<odoo>  
-    <!-- Vue liste des clients -->  
-    <record id="vrp_customer_view_tree" model="ir.ui.view">  
-        <field name="name">vrp.customer.tree</field>  
+<?xml version="1.0" encoding="utf-8"?>    
+<odoo>    
+    <!-- Vue liste des clients -->    
+    <record id="vrp_customer_view_tree" model="ir.ui.view">    
+        <field name="name">vrp.customer.tree</field>    
         <field name="model">vrp.customer</field>  
-        <field name="arch" type="xml">  
-            <tree>  
-                <field name="name"/>  
-                <field name="city"/>  
-                <field name="demand_weight"/>  
-                <field name="priority"/>  
-                <field name="ready_time" widget="float_time"/>  
-                <field name="due_time" widget="float_time"/>  
-                <field name="active"/>  
-            </tree>  
-        </field>  
-    </record>  
-  
-    <!-- Vue formulaire des clients -->  
-    <record id="vrp_customer_view_form" model="ir.ui.view">  
-        <field name="name">vrp.customer.form</field>  
-        <field name="model">vrp.customer</field>  
-        <field name="arch" type="xml">  
-            <form>  
-                <sheet>  
-                    <div class="oe_title">  
-                        <h1>  
-                            <field name="name" placeholder="Nom du client"/>  
-                        </h1>  
-                    </div>  
-                    <group>  
-                        <group>  
-                            <field name="partner_id"/>  
-                            <field name="priority"/>  
-                            <field name="active"/>  
-                        </group>  
-                        <group>  
-                            <field name="demand_weight"/>  
-                            <field name="demand_volume"/>  
-                            <field name="service_time"/>  
-                        </group>  
-                    </group>  
-                    <group string="Adresse">  
-                        <group>  
-                            <field name="street"/>  
-                            <field name="city"/>  
-                            <field name="zip_code"/>  
-                        </group>  
-                        <group>  
-                            <field name="latitude"/>  
-                            <field name="longitude"/>  
-                        </group>  
-                    </group>  
-                    <group string="Contraintes temporelles">  
-                        <group>  
-                            <field name="ready_time" widget="float_time"/>  
-                            <field name="due_time" widget="float_time"/>  
-                        </group>  
-                    </group>  
-                    <notebook>  
-                        <page string="Visites">  
-                            <field name="visit_ids">  
-                                <tree>  
-                                    <field name="route_id"/>  
-                                    <field name="sequence"/>  
-                                    <field name="planned_arrival" widget="float_time"/>  
-                                    <field name="state"/>  
-                                </tree>  
-                            </field>  
-                        </page>  
-                    </notebook>  
-                </sheet>  
-            </form>  
-        </field>  
-    </record>  
-  
-    <!-- Action pour les clients -->  
-    <record id="vrp_customer_action" model="ir.actions.act_window">  
-        <field name="name">Clients VRP</field>  
-        <field name="res_model">vrp.customer</field>  
-        <field name="view_mode">tree,form</field>  
-        <field name="help" type="html">  
-            <p class="o_view_nocontent_smiling_face">  
-                Créez votre premier client VRP  
-            </p>  
-            <p>  
-                Définissez les clients à visiter avec leurs demandes et contraintes temporelles.  
-            </p>  
-        </field>  
-    </record>  
+        <field name="type">list</field>  
+        <field name="arch" type="xml">    
+            <list>    
+                <field name="name"/>    
+                <field name="city"/>    
+                <field name="demand_weight"/>    
+                <field name="priority"/>    
+                <field name="ready_time" widget="float_time"/>    
+                <field name="due_time" widget="float_time"/>    
+                <field name="active"/>    
+            </list>    
+        </field>    
+    </record>    
+    
+    <!-- Vue formulaire des clients -->    
+    <record id="vrp_customer_view_form" model="ir.ui.view">    
+        <field name="name">vrp.customer.form</field>    
+        <field name="model">vrp.customer</field>    
+        <field name="arch" type="xml">    
+            <form>    
+                <sheet>    
+                    <div class="oe_title">    
+                        <h1>    
+                            <field name="name" placeholder="Nom du client"/>    
+                        </h1>    
+                    </div>    
+                    <group>    
+                        <group>    
+                            <field name="partner_id"/>    
+                            <field name="priority"/>    
+                            <field name="active"/>    
+                        </group>    
+                        <group>    
+                            <field name="demand_weight"/>    
+                            <field name="demand_volume"/>    
+                            <field name="service_time"/>    
+                        </group>    
+                    </group>    
+                    <group string="Adresse">    
+                        <group>    
+                            <field name="street"/>    
+                            <field name="city"/>    
+                            <field name="zip_code"/>    
+                        </group>    
+                        <group>    
+                            <field name="latitude"/>    
+                            <field name="longitude"/>    
+                        </group>    
+                    </group>    
+                    <group string="Contraintes temporelles">    
+                        <group>    
+                            <field name="ready_time" widget="float_time"/>    
+                            <field name="due_time" widget="float_time"/>    
+                        </group>    
+                    </group>    
+                    <notebook>    
+                        <page string="Visites">    
+                            <field name="visit_ids">    
+                                <list>    
+                                    <field name="route_id"/>    
+                                    <field name="sequence"/>    
+                                    <field name="planned_arrival" widget="float_time"/>    
+                                    <field name="state"/>    
+                                </list>    
+                            </field>    
+                        </page>    
+                    </notebook>    
+                </sheet>    
+            </form>    
+        </field>    
+    </record>    
+    
+    <!-- Action pour les clients -->    
+    <record id="vrp_customer_action" model="ir.actions.act_window">    
+        <field name="name">Clients VRP</field>    
+        <field name="res_model">vrp.customer</field>    
+        <field name="view_mode">tree,form</field>    
+        <field name="help" type="html">    
+            <p class="o_view_nocontent_smiling_face">    
+                Créez votre premier client VRP    
+            </p>    
+            <p>    
+                Définissez les clients à visiter avec leurs demandes et contraintes temporelles.    
+            </p>    
+        </field>    
+    </record>    
 </odoo>

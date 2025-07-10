@@ -22,15 +22,15 @@
         - Visualisation des résultats
         - Rapports détaillés
     """,
-    'author': 'Votre Nom',
-    'website': 'https://www.votre-site.com',
+    'author': 'Khadija',
+ #   'website': 'https://www.votre-site.com',
     'depends': ['base', 'web', 'contacts'],
     'external_dependencies': {
-        'python': ['optaplanner', 'matplotlib', 'numpy'],
+        'python': ['matplotlib', 'numpy'],
     },
     'data': [
-        'security/ir.model.access.csv',
         'security/vrp_security.xml',
+        #'security/ir.model.access.csv',
         'views/vrp_vehicle_views.xml',
         'views/vrp_customer_views.xml',
         'views/vrp_route_views.xml',
@@ -38,12 +38,12 @@
         'views/vrp_menus.xml',
         'data/vrp_data.xml',
     ],
-    'assets': {
-        'web.assets_backend': [
-            'vrp/static/src/js/vrp_map.js',
-            'vrp/static/src/css/vrp_style.css',
-        ],
-    },
+# 'assets': {  
+#     'web.assets_backend': [  
+#         'vrp/static/src/js/vrp_map.js',  
+#         'vrp/static/src/css/vrp_style.css',  
+#     ],  
+# },
     'installable': True,
     'application': True,
     'auto_install': False,

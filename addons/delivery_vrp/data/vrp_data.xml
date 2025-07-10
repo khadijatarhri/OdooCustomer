@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<odoo>  
+    <data noupdate="1">  
+        <!-- Données de démonstration pour les dépôts -->  
+        <record id="depot_main" model="vrp.depot">  
+            <field name="name">Dépôt Principal</field>  
+            <field name="street">123 Rue de la Logistique</field>  
+            <field name="city">Paris</field>  
+            <field name="zip_code">75001</field>  
+            <field name="latitude">48.8566</field>  
+            <field name="longitude">2.3522</field>  
+            <field name="active">True</field>  
+        </record>  
+  
+        <!-- Données de démonstration pour les types de véhicules -->  
+        <record id="vehicle_truck_01" model="vrp.vehicle">  
+            <field name="name">Camion 01</field>  
+            <field name="code">TRK001</field>  
+            <field name="vehicle_type">truck</field>  
+            <field name="capacity_weight">5000</field>  
+            <field name="capacity_volume">25</field>  
+            <field name="max_distance">500</field>  
+            <field name="cost_per_km">0.8</field>  
+            <field name="depot_id" ref="depot_main"/>  
+            <field name="work_start_time">8.0</field>  
+            <field name="work_end_time">18.0</field>  
+            <field name="availability">available</field>  
+            <field name="active">True</field>  
+        </record>  
+  
+        <record id="vehicle_van_01" model="vrp.vehicle">  
+            <field name="name">Fourgon 01</field>  
+            <field name="code">VAN001</field>  
+            <field name="vehicle_type">van</field>  
+            <field name="capacity_weight">2000</field>  
+            <field name="capacity_volume">12</field>  
+            <field name="max_distance">300</field>  
+            <field name="cost_per_km">0.5</field>  
+            <field name="depot_id" ref="depot_main"/>  
+            <field name="work_start_time">8.0</field>  
+            <field name="work_end_time">18.0</field>  
+            <field name="availability">available</field>  
+            <field name="active">True</field>  
+        </record>  
+  
+        <!-- Données de démonstration pour les clients -->  
+        <record id="customer_demo_01" model="vrp.customer">  
+            <field name="name">Client Démo 1</field>  
+            <field name="street">456 Avenue du Commerce</field>  
+            <field name="city">Lyon</field>  
+            <field name="zip_code">69001</field>  
+            <field name="latitude">45.7640</field>  
+            <field name="longitude">4.8357</field>  
+            <field name="demand_weight">100</field>  
+            <field name="demand_volume">2</field>  
+            <field name="service_time">30</field>  
+            <field name="priority">1</field>  
+            <field name="ready_time">9.0</field>  
+            <field name="due_time">17.0</field>  
+            <field name="active">True</field>  
+        </record>  
+  
+        <record id="customer_demo_02" model="vrp.customer">  
+            <field name="name">Client Démo 2</field>  
+            <field name="street">789 Boulevard de l'Industrie</field>  
+            <field name="city">Marseille</field>  
+            <field name="zip_code">13001</field>  
+            <field name="latitude">43.2965</field>  
+            <field name="longitude">5.3698</field>  
+            <field name="demand_weight">150</field>  
+            <field name="demand_volume">3</field>  
+            <field name="service_time">45</field>  
+            <field name="priority">2</field>  
+            <field name="ready_time">8.0</field>  
+            <field name="due_time">16.0</field>  
+            <field name="active">True</field>  
+        </record>  
+  
+        <!-- Séquences pour les numérotations automatiques -->  
+        <record id="seq_vrp_route" model="ir.sequence">  
+            <field name="name">Séquence Tournées VRP</field>  
+            <field name="code">vrp.route</field>  
+            <field name="prefix">ROUTE-</field>  
+            <field name="padding">4</field>  
+            <field name="number_next">1</field>  
+            <field name="number_increment">1</field>  
+        </record>  
+  
+        <record id="seq_vrp_optimization" model="ir.sequence">  
+            <field name="name">Séquence Optimisations VRP</field>  
+            <field name="code">vrp.optimization</field>  
+            <field name="prefix">OPT-</field>  
+            <field name="padding">4</field>  
+            <field name="number_next">1</field>  
+            <field name="number_increment">1</field>  
+        </record>  
+    </data>  
+</odoo>
