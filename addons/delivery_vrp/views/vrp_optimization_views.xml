@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<odoo>  
+    <!-- Vue liste des optimisations -->  
+    <record id="vrp_optimization_view_tree" model="ir.ui.view">  
+        <field name="name">vrp.optimization.tree</field>  
+        <field name="model">vrp.optimization</field>  
+        <field name="arch" type="xml">  
+            <tree decoration-info="state=='draft'" decoration-warning="state=='running'" decoration-success="state=='done'" decoration-danger="state=='error'">  
+                <field name="name"/>  
+                <field name="date"/>  
+                <field name="vehicles_used"/>  
+                <field name="total_distance"/>  
+                <field name="total_cost"/>  
+                <field name="state"/>  
+            </tree>  
+        </field>  
+    </record>  
+  
+    <!-- Vue formulaire des optimisations -->  
+    <record id="vrp_optimization_view_form" model="ir.ui.view">  
+        <field name="name">vrp.optimization.form</field>  
+        <field name="model">vrp.optimization</field>  
+        <field name="arch" type="xml">  
+            <form>  
+                <header>  
+                    <button name="action_optimize" string="Optimiser" type="object" states="draft" class="oe_highlight"/>  
+                    <button name="action_view_routes" string="Voir les tournées" type="object" states="done" class="oe_highlight"/>  
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,done"/>  
+                </header>  
+                <sheet>  
+                    <div class="oe_title">  
+                        <h1>  
+                            <field name="name" placeholder="Nom de l'optimisation"/>  
+                        </h1>  
+                    </div>  
+                    <group>  
+                        <group>  
+                            <field name="date"/>  
+                            <field name="optimization_time"/>  
+                        </group>  
+                        <group>  
+                            <field name="vehicles_used" readonly="1"/>  
+                            <field name="optimization_score" readonly="1"/>  
+                        </group>  
+                    </group>  
+                    <group string="Résultats" states="done">  
+                        <group>  
+                            <field name="total_distance"/>  
+                            <field name="total_cost"/>  
+                        </group>  
+                    </group>  
+                    <notebook>  
+                        <page string="Véhicules disponibles">  
+                            <field name="vehicle_ids">  
+                                <tree>  
+                                    <field name="name"/>  
+                                    <field name="vehicle_type"/>  
+                                    <field name="capacity_weight"/>  
+                                    <field name="availability"/>  
+                                </tree>  
+                            </field>  
+                        </page>  
+                        <page string="Clients à visiter">  
+                            <field name="customer_ids">  
+                                <tree>  
+                                    <field name="name"/>  
+                                    <field name="city"/>  
+                                    <field name="demand_weight"/>  
+                                    <field name="priority"/>  
+                                </tree>  
+                            </field>  
+                        </page>  
+                        <page string="Tournées générées" states="done">  
+                            <field name="route_ids">  
+                                <tree>  

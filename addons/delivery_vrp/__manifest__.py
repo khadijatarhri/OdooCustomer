@@ -1,6 +1,6 @@
 {
     'name': 'Vehicle Routing Problem (VRP)',
-    'version': '17.0.1.0.0',
+    'version': '18.0.1.0',
     'category': 'Operations',
     'summary': 'Optimisation des tournées de véhicules avec OptaPlanner',
     'description': """
