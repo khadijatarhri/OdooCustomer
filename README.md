@@ -1,1 +1,1 @@
-# odoo-chatbot
+# odoo-VRP
