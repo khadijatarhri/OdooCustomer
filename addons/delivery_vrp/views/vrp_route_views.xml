@@ -92,7 +92,7 @@
     <record id="vrp_route_action" model="ir.actions.act_window">    
         <field name="name">Tournées VRP</field>    
         <field name="res_model">vrp.route</field>    
-        <field name="view_mode">tree,form</field>    
+        <field name="view_mode">list,form</field>    
         <field name="help" type="html">    
             <p class="o_view_nocontent_smiling_face">    
                 Aucune tournée trouvée    
@@ -106,6 +106,6 @@
     <record id="vrp_visit_action" model="ir.actions.act_window">    
         <field name="name">Visites VRP</field>    
         <field name="res_model">vrp.visit</field>    
-        <field name="view_mode">tree,form</field>    
+        <field name="view_mode">list,form</field>    
     </record>    
 </odoo>

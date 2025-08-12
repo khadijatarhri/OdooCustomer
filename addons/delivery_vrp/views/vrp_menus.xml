@@ -4,7 +4,7 @@
     <menuitem id="vrp_main_menu"  
               name="VRP"  
               sequence="10"  
-              web_icon="delivery_vrp,static/description/icon.png"/>  
+              web_icon="delivery_vrp,static/description/VRP.png"/>  
   
     <!-- Sous-menu Configuration -->  
     <menuitem id="vrp_config_menu"  
@@ -52,4 +52,5 @@
               parent="vrp_operations_menu"  
               action="vrp_visit_action"  
               sequence="30"/>  
+
 </odoo>

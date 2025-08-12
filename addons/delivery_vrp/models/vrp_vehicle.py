@@ -19,7 +19,7 @@ class VrpVehicle(models.Model):
     capacity_weight = fields.Float('Capacité poids (kg)', required=True)
     capacity_volume = fields.Float('Capacité volume (m³)')
     max_distance = fields.Float('Distance maximale (km)', default=500.0)
-    cost_per_km = fields.Float('Coût par km (€)', default=0.5)
+    cost_per_km = fields.Float('Coût par km (Dh)', default=0.5)
     
     # Localisation
     depot_id = fields.Many2one('vrp.depot', string='Dépôt', required=True)

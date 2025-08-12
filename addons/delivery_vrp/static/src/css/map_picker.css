@@ -1,0 +1,48 @@
+.o_map_picker_widget {
+    width: 100%;
+}
+
+.o_map_picker_controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.o_map_container {
+    position: relative;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.o_map_container .leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+}
+
+.o_map_picker_coordinates {
+    font-family: monospace;
+    background-color: #f8f9fa;
+    padding: 4px 8px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+    .o_map_container {
+        height: 250px !important;
+    }
+
+    .o_map_picker_controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* Fix pour les icônes Leaflet */
+.leaflet-default-icon-path {
+    background-image: url('https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png');
+}

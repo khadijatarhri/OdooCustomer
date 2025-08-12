@@ -2,13 +2,13 @@
     'name': 'Vehicle Routing Problem (VRP)',
     'version': '18.0.1.0',
     'category': 'Operations',
-    'summary': 'Optimisation des tournées de véhicules avec OptaPlanner',
+    'summary': 'Optimisation des tournées de véhicules avec Ortools',
     'description': """
         Module VRP pour Odoo
         ===================
         
         Ce module permet d'optimiser les tournées de véhicules en utilisant:
-        - OptaPlanner pour l'optimisation
+        - Ortools pour l'optimisation
         - Contraintes hard et soft configurables
         - Interface utilisateur intuitive
         - Intégration avec les partenaires Odoo
@@ -23,14 +23,13 @@
         - Rapports détaillés
     """,
     'author': 'Khadija',
- #   'website': 'https://www.votre-site.com',
-    'depends': ['base', 'web', 'contacts'],
+    'depends': ['base', 'web', 'contacts','leaflet_map'],
     'external_dependencies': {
-        'python': ['matplotlib', 'numpy'],
+        'python': ['matplotlib', 'numpy' ],
     },
     'data': [
         'security/vrp_security.xml',
-        #'security/ir.model.access.csv',
+        'security/ir.model.access.csv',
         'views/vrp_vehicle_views.xml',
         'views/vrp_customer_views.xml',
         'views/vrp_route_views.xml',
@@ -38,12 +37,12 @@
         'views/vrp_menus.xml',
         'data/vrp_data.xml',
     ],
-# 'assets': {  
-#     'web.assets_backend': [  
-#         'vrp/static/src/js/vrp_map.js',  
-#         'vrp/static/src/css/vrp_style.css',  
-#     ],  
-# },
+    'assets': {    
+    'web.assets_backend': [ 
+        'delivery_vrp/static/src/*',    
+    ],    
+},
+
     'installable': True,
     'application': True,
     'auto_install': False,

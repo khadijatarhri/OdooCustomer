@@ -13,7 +13,7 @@ class VrpRoute(models.Model):
     total_distance = fields.Float('Distance totale (km)', readonly=True)
     total_duration = fields.Float('Durée totale (h)', readonly=True)
     total_demand = fields.Float('Charge totale (kg)', readonly=True)
-    load_rate = fields.Float('Taux de charge (%)', readonly=True, compute='_compute_load_rate')
+    load_rate = fields.Float('Taux de charge (%)', readonly=True, compute='_compute_load_rate') #readonly=True signifie que le champ ne peut pas être modifié directement par l'utilisateur dans l'interface 
     
     # Statut
     state = fields.Selection([

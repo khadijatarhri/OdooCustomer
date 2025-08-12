@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="delivery_vrp.MapPickerTemplate" owl="1">
+    <div class="o_map_picker_widget">
+      <div t-ref="mapContainer"/>
+    </div>
+  </t>
+</templates>

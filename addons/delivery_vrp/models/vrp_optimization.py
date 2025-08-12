@@ -20,7 +20,7 @@ class VrpOptimization(models.Model):
     
     # Résultats
     total_distance = fields.Float('Distance totale (km)', readonly=True)
-    total_cost = fields.Float('Coût total (€)', readonly=True)
+    total_cost = fields.Float('Coût total (Dh)', readonly=True)
     vehicles_used = fields.Integer('Véhicules utilisés', readonly=True)
     optimization_score = fields.Char('Score d\'optimisation', readonly=True)
     
