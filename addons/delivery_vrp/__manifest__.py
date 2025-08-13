@@ -23,7 +23,7 @@
         - Rapports détaillés
     """,
     'author': 'Khadija',
-    'depends': ['base', 'web', 'contacts','leaflet_map'],
+    'depends': ['base', 'web', 'contacts'],
     'external_dependencies': {
         'python': ['matplotlib', 'numpy' ],
     },
