@@ -54,19 +54,7 @@
                             <field name="work_end_time" widget="float_time"/>    
                         </group>    
                     </group>    
-                    <notebook>    
-                        <page string="Tournées">    
-                            <field name="route_ids">    
-                                <list>    
-                                    <field name="name"/>    
-                                    <field name="date"/>    
-                                    <field name="state"/>    
-                                    <field name="total_distance"/>    
-                                    <field name="load_rate"/>    
-                                </list>    
-                            </field>    
-                        </page>    
-                    </notebook>    
+                      
                 </sheet>    
             </form>    
         </field>    

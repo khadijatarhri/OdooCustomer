@@ -25,16 +25,7 @@
             <field name="perm_unlink" eval="1"/>  
         </record>  
   
-         <!--Règles de sécurité pour les clients -->   
-        <record id="vrp_customer_rule" model="ir.rule">  
-            <field name="name">VRP Customer Access</field>  
-            <field name="model_id" ref="model_vrp_customer"/>  
-            <field name="groups" eval="[(4, ref('group_vrp_user'))]"/>  
-            <field name="perm_read" eval="1"/>  
-            <field name="perm_write" eval="1"/>  
-            <field name="perm_create" eval="1"/>  
-            <field name="perm_unlink" eval="1"/>  
-        </record> 
+        
         
     </data>  
 </odoo>

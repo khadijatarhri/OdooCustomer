@@ -12,19 +12,18 @@
               parent="vrp_main_menu"  
               sequence="10"/>  
   
-    <!-- Menu Véhicules -->  
-    <menuitem id="vrp_vehicle_menu"  
-              name="Véhicules"  
-              parent="vrp_config_menu"  
-              action="vrp_vehicle_action"  
-              sequence="10"/>  
-  
-    <!-- Menu Clients -->  
     <menuitem id="vrp_customer_menu"  
-              name="Clients"  
-              parent="vrp_config_menu"  
-              action="vrp_customer_action"  
-              sequence="20"/>  
+          name="Clients"  
+          parent="vrp_config_menu"  
+          action="sale_partner_action"  
+          sequence="5"/>  
+  
+<!-- Menu Véhicules (maintenant en second) -->  
+    <menuitem id="vrp_vehicle_menu"  
+          name="Véhicules"  
+          parent="vrp_config_menu"  
+          action="vrp_vehicle_action"  
+          sequence="10"/> 
   
     <!-- Sous-menu Opérations -->  
     <menuitem id="vrp_operations_menu"  
@@ -32,25 +31,6 @@
               parent="vrp_main_menu"  
               sequence="20"/>  
   
-    <!-- Menu Optimisations -->  
-    <menuitem id="vrp_optimization_menu"  
-              name="Optimisations"  
-              parent="vrp_operations_menu"  
-              action="vrp_optimization_action"  
-              sequence="10"/>  
   
-    <!-- Menu Tournées -->  
-    <menuitem id="vrp_route_menu"  
-              name="Tournées"  
-              parent="vrp_operations_menu"  
-              action="vrp_route_action"  
-              sequence="20"/>  
-  
-    <!-- Menu Visites -->  
-    <menuitem id="vrp_visit_menu"  
-              name="Visites"  
-              parent="vrp_operations_menu"  
-              action="vrp_visit_action"  
-              sequence="30"/>  
 
 </odoo>

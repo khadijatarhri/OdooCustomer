@@ -23,7 +23,7 @@
         - Rapports détaillés
     """,
     'author': 'Khadija',
-    'depends': ['base', 'web', 'contacts'],
+    'depends': ['base', 'web', 'contacts','sale'],
     'external_dependencies': {
         'python': ['matplotlib', 'numpy' ],
     },
@@ -32,8 +32,6 @@
         'security/ir.model.access.csv',
         'views/vrp_vehicle_views.xml',
         'views/vrp_customer_views.xml',
-        'views/vrp_route_views.xml',
-        'views/vrp_optimization_views.xml',
         'views/vrp_menus.xml',
         'data/vrp_data.xml',
     ],

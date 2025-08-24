@@ -37,9 +37,7 @@ class VrpVehicle(models.Model):
         ('unavailable', 'Indisponible')
     ], string='Disponibilité', default='available')
     
-    # Relations
-    route_ids = fields.One2many('vrp.route', 'vehicle_id', string='Tournées')
-    
+        
     @api.constrains('capacity_weight', 'max_distance')
     def _check_capacities(self):
         for record in self:

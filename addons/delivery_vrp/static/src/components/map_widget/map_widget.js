@@ -23,10 +23,13 @@ export class MapWidget extends Component {
     });
 
     onWillUpdateProps((nextProps) => {
+    
+      
       const newCoordinates = this.getCoordinates(nextProps);
       if (JSON.stringify(newCoordinates) !== JSON.stringify(this.state.coordinates)) {
         this.state.coordinates = newCoordinates;
       }
+
     });
   
 
@@ -58,7 +61,7 @@ export class MapWidget extends Component {
           coordinates: this.state.coordinates,
           save: async(newCoordinates,address) => {
             console.log("addresss in parrent",address)
-            const data = await rpc('/partner/map_address',{ address: address})
+            const data = await rpc('/vrp_customer/map_address',{ address: address})
       
             this.state.coordinates = newCoordinates;
             this.props.record.update({
@@ -70,7 +73,7 @@ export class MapWidget extends Component {
                     'state_id':data.state_id || false,
                     'street': data.street,
                     'city': data.city,
-                    'zip': data.zip,
+                    'zip_code': data.zip_code,
                     'country_id':data.country_id || false
   
                 }
