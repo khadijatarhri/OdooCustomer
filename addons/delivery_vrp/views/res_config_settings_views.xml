@@ -1,0 +1,197 @@
+<odoo>
+    <record id="res_config_settings_view_form_vrp" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.vrp</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="VRP - Vehicle Routing" string="VRP - Vehicle Routing" data-key="vrp">
+                    
+                    <h2>Configuration du Routage</h2>
+                    
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_routing_service" widget="radio"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_routing_service"/>
+                                <div class="text-muted">
+                                    Service utilisé pour calculer les distances routières réelles
+                                </div>
+                                <div class="mt8">
+                                    <button name="action_test_routing_service" 
+                                            type="object" 
+                                            string="Tester la Connexion" 
+                                            class="btn-secondary"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box" 
+                             attrs="{'invisible': [('vrp_routing_service', '!=', 'openrouteservice')]}">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_openrouteservice_key"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_openrouteservice_key"/>
+                                <div class="text-muted">
+                                    Clé API gratuite d'OpenRouteService (2000 requêtes/jour)
+                                    <br/>
+                                    <a href="https://openrouteservice.org/dev/#/signup" target="_blank">
+                                        → Créer un compte gratuit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box" 
+                             attrs="{'invisible': [('vrp_routing_service', '!=', 'graphhopper')]}">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_graphhopper_key"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_graphhopper_key"/>
+                                <div class="text-muted">
+                                    Clé API GraphHopper (optionnelle)
+                                    <br/>
+                                    <a href="https://www.graphhopper.com/dashboard/#/register" target="_blank">
+                                        → Créer un compte gratuit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Configuration du Dépôt</h2>
+                    
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_depot_latitude" digits="[10,6]"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_depot_latitude"/>
+                                <div class="text-muted">
+                                    Coordonnée latitude du point de départ des livraisons
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_depot_longitude" digits="[10,6]"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_depot_longitude"/>
+                                <div class="text-muted">
+                                    Coordonnée longitude du point de départ des livraisons
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <strong>💡 Conseil :</strong> Vous pouvez obtenir les coordonnées de votre dépôt en utilisant 
+                                <a href="https://www.google.com/maps" target="_blank">Google Maps</a> 
+                                (clic droit → coordonnées) ou directement depuis votre interface VRP.
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Contraintes d'Optimisation</h2>
+                    
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_max_route_distance"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_max_route_distance"/>
+                                <div class="text-muted">
+                                    Distance maximale qu'un véhicule peut parcourir (en kilomètres)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="vrp_max_stops_per_route"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="vrp_max_stops_per_route"/>
+                                <div class="text-muted">
+                                    Nombre maximum d'arrêts/clients par véhicule
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <h4><i class="fa fa-info-circle"/> Services de Routage Comparés</h4>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Service</th>
+                                            <th>Gratuit</th>
+                                            <th>Limite</th>
+                                            <th>Précision</th>
+                                            <th>Recommandation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="table-success">
+                                            <td><strong>OSRM</strong></td>
+                                            <td><span class="badge badge-success">Oui</span></td>
+                                            <td>Illimité</td>
+                                            <td>★★★★★</td>
+                                            <td><strong>Recommandé pour production</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>OpenRouteService</strong></td>
+                                            <td><span class="badge badge-success">Oui</span></td>
+                                            <td>2000 req/jour</td>
+                                            <td>★★★★☆</td>
+                                            <td>Bon pour PME</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>GraphHopper</strong></td>
+                                            <td><span class="badge badge-warning">Limité</span></td>
+                                            <td>2500 req/mois</td>
+                                            <td>★★★★☆</td>
+                                            <td>Backup option</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Menu item for VRP settings -->
+    <record id="vrp_config_settings_action" model="ir.actions.act_window">
+        <field name="name">VRP Settings</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'vrp'}</field>
+    </record>
+
+    <menuitem id="vrp_config_menu" 
+              name="VRP Configuration" 
+              parent="fleet.fleet_configuration"
+              action="vrp_config_settings_action"
+              sequence="10"/>
+
+</odoo>

@@ -15,8 +15,9 @@
     <menuitem id="vrp_customer_menu"  
           name="Clients"  
           parent="vrp_config_menu"  
-          action="sale_partner_action"  
+          action="vrp_order_action"  
           sequence="5"/>  
+
   
 <!-- Menu Véhicules (maintenant en second) -->  
     <menuitem id="vrp_vehicle_menu"  

@@ -26,7 +26,7 @@
         <field name="arch" type="xml">    
             <form>    
                 <header>    
-                    <field name="availability" widget="statusbar"/>    
+                    <field name="availability" widget="statusbar" id="vehicle_availability"/>    
                 </header>    
                 <sheet>    
                     <div class="oe_title">    
@@ -50,8 +50,8 @@
                     </group>    
                     <group string="Contraintes de temps">    
                         <group>    
-                            <field name="work_start_time" widget="float_time"/>    
-                            <field name="work_end_time" widget="float_time"/>    
+                            <field name="work_start_time" widget="float_time" id="work_start_time"/>    
+                            <field name="work_end_time" widget="float_time" id="work_end_time"/>    
                         </group>    
                     </group>    
                       

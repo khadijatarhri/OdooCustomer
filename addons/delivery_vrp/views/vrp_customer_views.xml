@@ -1,19 +1,96 @@
-<?xml version="1.0" encoding="utf-8"?>  
-<odoo>  
-    <!-- Action pour les clients de vente -->  
-    <record id="sale_partner_action" model="ir.actions.act_window">  
-        <field name="name">Clients de Vente</field>  
-        <field name="res_model">res.partner</field>  
+<?xml version="1.0" encoding="utf-8"?>      
+<odoo>      
+    <!-- Action pour les clients de vente (conservée pour compatibilité) -->      
+    <record id="sale_partner_action" model="ir.actions.act_window">      
+        <field name="name">Clients de Vente</field>      
+        <field name="res_model">res.partner</field>      
+        <field name="view_mode">list,form</field>      
+        <field name="domain">[('is_company', '=', False), ('customer_rank', '>', 0)]</field>      
+        <field name="context">{'default_is_company': False, 'default_customer_rank': 1}</field>      
+        <field name="help" type="html">      
+            <p class="o_view_nocontent_smiling_face">      
+                Créez votre premier client      
+            </p>      
+            <p>      
+                Gérez vos clients pour les tournées VRP directement depuis le module de vente.      
+            </p>      
+        </field>      
+    </record>      
+  
+    <!-- Vue liste pour le nouveau modèle vrp.order -->  
+    <record id="vrp_order_tree_view" model="ir.ui.view">  
+        <field name="name">vrp.order.tree</field>  
+        <field name="model">vrp.order</field>  
+        <field name="arch" type="xml">  
+            <list string="Commandes VRP" default_group_by="assigned_vehicle_id" expand="1">  
+                <header>  
+                    <button name="action_optimize_delivery" type="object" string="Optimize" class="btn-primary"/>  
+                    <button name="action_show_map" type="object" string="Map" class="btn-secondary"/>  
+                </header>  
+                <field name="assigned_vehicle_id" invisible="1"/>  
+                <field name="delivery_sequence" string="Seq"/>  
+                <field name="name" string="Delivery Order"/>  
+                <field name="partner_id" string="Customer"/>  
+                <field name="delivery_address" string="Delivery Address"/>
+                <field name="assigned_vehicle_id" string="Vehicle"/>  
+                <field name="manual_assignment" string="Manual Vehicle Assignment"/>  
+                <field name="driver_id" string="Driver"/>  
+            </list>  
+        </field>  
+    </record>  
+  
+    <!-- Vue formulaire pour vrp.order -->  
+    <record id="vrp_order_form_view" model="ir.ui.view">  
+        <field name="name">vrp.order.form</field>  
+        <field name="model">vrp.order</field>  
+        <field name="arch" type="xml">  
+            <form string="Commande VRP">  
+                <sheet>  
+                    <group>  
+                        <group>  
+                            <field name="sale_order_id"/>  
+                            <field name="name"/>  
+                            <field name="partner_id"/>  
+                            <field name="delivery_address"/>
+                        </group>  
+                        <group>  
+                            <field name="assigned_vehicle_id"/>  
+                            <field name="delivery_sequence"/>  
+                            <field name="manual_assignment"/>  
+                            <field name="driver_id"/>  
+                        </group>  
+                    </group>  
+                </sheet>  
+            </form>  
+        </field>  
+    </record>  
+  
+    <!-- Action pour le nouveau modèle vrp.order -->  
+    <record id="vrp_order_action" model="ir.actions.act_window">  
+        <field name="name">Commandes VRP</field>  
+        <field name="res_model">vrp.order</field>  
         <field name="view_mode">list,form</field>  
-        <field name="domain">[('is_company', '=', False), ('customer_rank', '>', 0)]</field>  
-        <field name="context">{'default_is_company': False, 'default_customer_rank': 1}</field>  
+        <field name="view_id" ref="vrp_order_tree_view"/>  
         <field name="help" type="html">  
             <p class="o_view_nocontent_smiling_face">  
-                Créez votre premier client  
+                Aucune commande VRP trouvée  
             </p>  
             <p>  
-                Gérez vos clients pour les tournées VRP directement depuis le module de vente.  
+                Les commandes VRP sont créées automatiquement à partir des commandes de vente.  
             </p>  
         </field>  
     </record>  
+  
+    <!-- Vue pour la carte des itinéraires -->    
+    <record id="vrp_map_view_form" model="ir.ui.view">    
+        <field name="name">vrp.map.view.form</field>    
+        <field name="model">vrp.map.view</field>    
+        <field name="arch" type="xml">    
+            <form string="Delivery Routes Map">    
+                <div class="o_vrp_map_container" style="height: 600px; width: 100%;">    
+                    <field name="vehicles_data" widget="vrp_route_map"/>    
+                </div>    
+            </form>    
+        </field>    
+    </record>    
 </odoo>

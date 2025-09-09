@@ -23,9 +23,9 @@
         - Rapports détaillés
     """,
     'author': 'Khadija',
-    'depends': ['base', 'web', 'contacts','sale'],
+    'depends': ['base', 'web', 'contacts','sale','fleet','stock'],
     'external_dependencies': {
-        'python': ['matplotlib', 'numpy' ],
+        'python': ['matplotlib', 'numpy' ,'ortools'],
     },
     'data': [
         'security/vrp_security.xml',
@@ -37,7 +37,10 @@
     ],
     'assets': {    
     'web.assets_backend': [ 
-        'delivery_vrp/static/src/*',    
+        'delivery_vrp/static/src/*',  
+        'delivery_vrp/static/src/css/vrp_route_map.css',  
+        'delivery_vrp/static/src/js/vrp_route_map_widget.js',  
+        'delivery_vrp/static/src/xml/vrp_route_map_template.xml',    
     ],    
 },
 

@@ -1,0 +1,216 @@
+/* ===== VRP Route Map Widget Styles ===== */  
+  
+/* Conteneur principal du widget VRP */  
+.o_vrp_route_map_widget {  
+    display: block !important;  
+    visibility: visible !important;  
+    opacity: 1 !important;  
+    width: 100%;  
+    height: 100%;  
+    position: relative;  
+    background-color: #ffffff;  
+    border: 1px solid #dee2e6;  
+    border-radius: 8px;  
+    overflow: hidden;  
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  
+}  
+  
+/* Conteneur de la carte Leaflet */  
+.vrp-map {  
+    height: 600px !important;  
+    width: 100% !important;  
+    min-height: 500px !important;  
+    display: block !important;  
+    position: relative;  
+    z-index: 1;  
+}  
+  
+/* Force les dimensions du conteneur Leaflet */  
+.o_vrp_route_map_widget .leaflet-container {  
+    height: 100% !important;  
+    width: 100% !important;  
+    min-height: 600px !important;  
+    display: block !important;  
+}  
+  
+/* Indicateur de chargement */  
+.vrp-loading {  
+    position: absolute;  
+    top: 50%;  
+    left: 50%;  
+    transform: translate(-50%, -50%);  
+    z-index: 1000;  
+    background-color: rgba(255, 255, 255, 0.9);  
+    padding: 20px;  
+    border-radius: 8px;  
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  
+    font-size: 16px;  
+    color: #495057;  
+    display: flex;  
+    align-items: center;  
+    gap: 10px;  
+}  
+  
+.vrp-loading .fa-spinner {  
+    font-size: 18px;  
+    color: #007bff;  
+}  
+  
+/* Styles pour les marqueurs de véhicules */  
+.vrp-vehicle-marker {  
+    background-color: #007bff;  
+    border: 2px solid #ffffff;  
+    border-radius: 50%;  
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);  
+}  
+  
+/* Styles pour les popups des marqueurs */  
+.vrp-marker-popup {  
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;  
+    font-size: 14px;  
+    line-height: 1.4;  
+}  
+  
+.vrp-marker-popup .popup-title {  
+    font-weight: bold;  
+    color: #495057;  
+    margin-bottom: 8px;  
+    border-bottom: 1px solid #dee2e6;  
+    padding-bottom: 4px;  
+}  
+  
+.vrp-marker-popup .popup-content {  
+    color: #6c757d;  
+}  
+  
+/* Styles pour les routes OSRM */  
+.leaflet-routing-container {  
+    background-color: rgba(255, 255, 255, 0.95);  
+    border-radius: 6px;  
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);  
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;  
+}  
+  
+.leaflet-routing-alt {  
+    padding: 8px 12px;  
+    border-bottom: 1px solid #dee2e6;  
+}  
+  
+.leaflet-routing-alt:last-child {  
+    border-bottom: none;  
+}  
+  
+/* Couleurs personnalisées pour différents véhicules */  
+.vrp-route-vehicle-1 {  
+    stroke: #007bff;  
+    stroke-width: 4;  
+    stroke-opacity: 0.8;  
+}  
+  
+.vrp-route-vehicle-2 {  
+    stroke: #28a745;  
+    stroke-width: 4;  
+    stroke-opacity: 0.8;  
+}  
+  
+.vrp-route-vehicle-3 {  
+    stroke: #dc3545;  
+    stroke-width: 4;  
+    stroke-opacity: 0.8;  
+}  
+  
+.vrp-route-vehicle-4 {  
+    stroke: #ffc107;  
+    stroke-width: 4;  
+    stroke-opacity: 0.8;  
+}  
+  
+.vrp-route-vehicle-5 {  
+    stroke: #6f42c1;  
+    stroke-width: 4;  
+    stroke-opacity: 0.8;  
+}  
+  
+/* Responsive pour mobile */  
+@media (max-width: 768px) {  
+    .vrp-map {  
+        height: 400px !important;  
+        min-height: 350px !important;  
+    }  
+      
+    .o_vrp_route_map_widget .leaflet-container {  
+        min-height: 400px !important;  
+    }  
+      
+    .vrp-loading {  
+        padding: 15px;  
+        font-size: 14px;  
+    }  
+}  
+  
+@media (max-width: 480px) {  
+    .vrp-map {  
+        height: 300px !important;  
+        min-height: 280px !important;  
+    }  
+      
+    .o_vrp_route_map_widget .leaflet-container {  
+        min-height: 300px !important;  
+    }  
+}  
+  
+/* Fix pour les icônes Leaflet dans le contexte VRP */  
+.o_vrp_route_map_widget .leaflet-default-icon-path {  
+    background-image: url('https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png');  
+}  
+  
+.o_vrp_route_map_widget .leaflet-marker-icon {  
+    margin-left: -12px;  
+    margin-top: -41px;  
+}  
+  
+/* Styles pour les contrôles de la carte */  
+.o_vrp_route_map_widget .leaflet-control-zoom {  
+    border: none;  
+    border-radius: 6px;  
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);  
+}  
+  
+.o_vrp_route_map_widget .leaflet-control-zoom a {  
+    background-color: #ffffff;  
+    border: 1px solid #dee2e6;  
+    color: #495057;  
+    font-weight: bold;  
+}  
+  
+.o_vrp_route_map_widget .leaflet-control-zoom a:hover {  
+    background-color: #f8f9fa;  
+    border-color: #adb5bd;  
+}  
+  
+/* Animation pour le chargement */  
+@keyframes vrp-pulse {  
+    0% { opacity: 0.6; }  
+    50% { opacity: 1; }  
+    100% { opacity: 0.6; }  
+}  
+  
+.vrp-loading .fa-spinner {  
+    animation: vrp-pulse 1.5s ease-in-out infinite;  
+}  
+  
+/* Styles pour les erreurs */  
+.vrp-error-message {  
+    position: absolute;  
+    top: 50%;  
+    left: 50%;  
+    transform: translate(-50%, -50%);  
+    background-color: #f8d7da;  
+    color: #721c24;  
+    padding: 15px 20px;  
+    border-radius: 6px;  
+    border: 1px solid #f5c6cb;  
+    font-size: 14px;  
+    text-align: center;  
+    z-index: 1000;  
+}
