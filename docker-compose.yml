@@ -2,12 +2,6 @@ version: '3.8'
 
 services:
 
-  db-restaurant1:  
-    image: postgres:15  
-    environment:  
-      - POSTGRES_DB=restaurant1_db  
-      - POSTGRES_USER=odoo  
-      - POSTGRES_PASSWORD=odoo_password
   web:
     build: .
     # Ou utiliser l'image officielle directement :

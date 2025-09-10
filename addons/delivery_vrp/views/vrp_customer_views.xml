@@ -24,7 +24,7 @@
         <field name="arch" type="xml">  
             <list string="Commandes VRP" default_group_by="assigned_vehicle_id" expand="1">  
                 <header>  
-                    <button name="action_optimize_delivery" type="object" string="Optimize" class="btn-primary"/>  
+                    <button name="action_optimize_delivery_enhanced" type="object" string="Optimize Enhanced" class="btn-primary"/>
                     <button name="action_show_map" type="object" string="Map" class="btn-secondary"/>  
                 </header>  
                 <field name="assigned_vehicle_id" invisible="1"/>  

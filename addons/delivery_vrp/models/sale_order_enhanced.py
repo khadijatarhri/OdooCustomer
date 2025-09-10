@@ -91,13 +91,15 @@ class SaleOrderEnhanced(models.Model):
             raise UserError("Aucun véhicule avec chauffeur disponible")
         
         # Vérifier la configuration du dépôt
-        company = self.env.company
-        if not company.vrp_depot_latitude or not company.vrp_depot_longitude:
-            raise UserError(
-                "Coordonnées du dépôt non configurées.\n"
-                "Allez dans Configuration > VRP Configuration pour définir l'emplacement de votre dépôt."
-            )
-        
+        #company = self.env.company
+        #if not company.vrp_depot_latitude or not company.vrp_depot_longitude:
+        #    raise UserError(
+        #        "Coordonnées du dépôt non configurées.\n"
+        #        "Coordonnées du dépôt non configurées.\n"
+        #        "Allez dans Configuration > VRP Configuration pour définir l'emplacement de votre dépôt."
+        #    )
+        depot_lat, depot_lng = 34.0209, -6.8416  # Rabat
+
         _logger.info(f"Validation completed: {len(orders)} orders, {len(available_vehicles)} vehicles available")
 
     def _create_optimization_session(self, orders):
@@ -336,8 +338,9 @@ class VRPRouteOptimization(models.Model):
     name = fields.Char('Session Name', required=True)
     user_id = fields.Many2one('res.users', 'Optimized By', required=True)
     company_id = fields.Many2one('res.company', 'Company', required=True)
-    order_ids = fields.Many2many('sale.order', 'Session Orders')
-    
+    order_ids = fields.Many2many('sale.order', string='Session Orders')
+
+
     status = fields.Selection([
         ('running', 'En Cours'),
         ('completed', 'Terminé'),

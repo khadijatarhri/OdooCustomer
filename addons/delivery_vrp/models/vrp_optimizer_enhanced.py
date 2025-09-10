@@ -39,17 +39,17 @@ class VRPOptimizerEnhanced(models.TransientModel):
         }
     }
 
-    def _get_company_settings(self):
-        """Récupérer les paramètres de routage de la société"""
-        company = self.env.company
-        return {
-            'routing_service': getattr(company, 'vrp_routing_service', 'osrm'),
-            'openrouteservice_key': getattr(company, 'vrp_openrouteservice_key', ''),
-            'graphhopper_key': getattr(company, 'vrp_graphhopper_key', ''),
-            'depot_latitude': getattr(company, 'vrp_depot_latitude', 33.5731),
-            'depot_longitude': getattr(company, 'vrp_depot_longitude', -7.5898),
-        }
+   
 
+    def _get_company_settings(self):  
+     """Récupérer les paramètres de routage avec valeurs fixes"""  
+     return {  
+        'routing_service': 'osrm',  # Service gratuit et fiable  
+        'openrouteservice_key': '',  
+        'graphhopper_key': '',  
+        'depot_latitude': 34.0209,  # RABAT par défaut  
+        'depot_longitude': -6.8416,  
+     }
     def _calculate_euclidean_distance(self, lat1, lon1, lat2, lon2):
         """Distance euclidienne de fallback"""
         R = 6371  # Rayon de la Terre en km

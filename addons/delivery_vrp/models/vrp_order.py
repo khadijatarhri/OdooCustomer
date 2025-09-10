@@ -55,6 +55,16 @@ class VrpOrder(models.Model):
         else:  
             record.partner_latitude = 0.0  
             record.partner_longitude = 0.0
+
+
+    def action_optimize_delivery_enhanced(self):  
+     """Redirection vers l'optimisation améliorée des sale orders"""  
+     # Récupérer les sale orders correspondants  
+     sale_orders = self.mapped('sale_order_id')  
+      
+     # Appeler l'optimisation améliorée sur les sale orders  
+     return sale_orders.action_optimize_delivery_enhanced()
+
   
     def action_optimize_delivery(self):  
         """Optimisation complète avec OR-Tools"""  

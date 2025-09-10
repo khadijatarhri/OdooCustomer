@@ -1,7 +1,10 @@
-# -*- coding: utf-8 -*-
-from . import vrp_vehicle  
-from . import vrp_depot  
-from . import sale_order  
+from . import vrp_vehicle    
+from . import vrp_depot    
+from . import sale_order    
+from . import sale_order_enhanced  
 from . import vrp_optimizer  
-from . import vrp_map_view
-from . import vrp_order
+from . import vrp_optimizer_enhanced
+from . import vrp_map_view  
+from . import vrp_order  
+from . import res_company  
+from . import res_config_settings

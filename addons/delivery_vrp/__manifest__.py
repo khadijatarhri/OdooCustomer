@@ -32,6 +32,7 @@
         'security/ir.model.access.csv',
         'views/vrp_vehicle_views.xml',
         'views/vrp_customer_views.xml',
+        'views/res_config_settings_views.xml',
         'views/vrp_menus.xml',
         'data/vrp_data.xml',
     ],

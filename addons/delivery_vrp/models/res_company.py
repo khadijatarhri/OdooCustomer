@@ -36,12 +36,12 @@ class ResCompany(models.Model):
     
     vrp_max_route_distance = fields.Integer(
         string='Distance Max par Route (km)',
-        default=100,
+        default=1000,
         help="Distance maximale qu'un véhicule peut parcourir"
     )
     
     vrp_max_stops_per_route = fields.Integer(
         string='Arrêts Max par Route',
-        default=20,
+        default=100,
         help="Nombre maximum d'arrêts par véhicule"
     )

@@ -1,35 +1,35 @@
-FROM odoo:18    
+FROM odoo:18      
+      
+USER root      
     
-USER root    
+# Créer les répertoires nécessaires    
+RUN mkdir -p /var/lib/odoo/.local && \      
+    chown -R odoo:odoo /var/lib/odoo     
   
-# Créer les répertoires nécessaires  
-RUN mkdir -p /var/lib/odoo/.local && \    
-    chown -R odoo:odoo /var/lib/odoo   
-
-
-# Installer Java et les dépendances  
+# Installer les dépendances système  
 RUN apt-get update && apt-get install -y \  
-    openjdk-11-jdk \  
-    python3-pip \  
     build-essential \  
-    unzip \
+    libjpeg-dev \  
+    zlib1g-dev \  
+    libfreetype6-dev \  
+    liblcms2-dev \  
+    libwebp-dev \  
+    python3-tk \  
     && rm -rf /var/lib/apt/lists/*  
   
-# Installer JPype pour l'intégration Java-Python  
-RUN pip3 install --break-system-packages jpype1 matplotlib numpy  
+# Installer les dépendances Python  
+RUN pip3 install --break-system-packages protobuf    
+RUN pip3 install --break-system-packages --no-deps ortools  
+RUN pip3 install --break-system-packages matplotlib numpy  
+RUN mkdir -p /var/lib/odoo/.local /var/lib/odoo/.cache && \  
+    chown -R odoo:odoo /var/lib/odoo && \  
+    chmod -R 755 /var/lib/odoo
   
-# Télécharger OptaPlanner JAR  
-RUN curl -L -o optaplanner.zip https://download.jboss.org/optaplanner/release/8.44.0.Final/optaplanner-distribution-8.44.0.Final.zip \  
-    && unzip optaplanner.zip \  
-    && mv optaplanner-distribution-8.44.0.Final /opt/optaplanner \  
-    && rm optaplanner.zip
-
-# Copier les fichiers de configuration et addons    
-COPY config/odoo.conf /etc/odoo/    
-COPY addons /mnt/extra-addons/    
-    
-# Ajuster les permissions    
-RUN chown -R odoo:odoo /mnt/extra-addons    
-    
-USER odoo    
+# Copier les fichiers de configuration et addons      
+COPY config/odoo.conf /etc/odoo/      
+      
+# Ajuster les permissions      
+RUN chown -R odoo:odoo /mnt/extra-addons      
+      
+USER odoo      
 EXPOSE 8069
