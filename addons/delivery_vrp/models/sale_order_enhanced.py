@@ -34,74 +34,126 @@ class SaleOrderEnhanced(models.Model):
     ], string='Statut de Livraison', default='pending')
 
     def action_optimize_delivery_enhanced(self):
-        """Action d'optimisation améliorée avec distances routières"""
-        selected_orders = self.browse(self.env.context.get('active_ids', []))
-        
-        if not selected_orders:
-            raise UserError("Veuillez sélectionner au moins une commande")
+     """Action d'optimisation améliorée avec distances routières"""
+     active_ids = self.env.context.get('active_ids', [])  
+     selected_orders = self.browse(active_ids).exists()
 
-        # Validation préalable
-        self._validate_orders_for_optimization(selected_orders)
+     if not selected_orders:  
+        raise UserError("Aucune commande valide sélectionnée ou les commandes ont été supprimées")  
+  
+    # Forcer le recalcul des coordonnées avant validation  
+     self._ensure_coordinates_computed(selected_orders)  
+    
+    # Validation préalable
+     self._validate_orders_for_optimization(selected_orders)
+    
+    # Créer une session d'optimisation
+     optimization_session = self._create_optimization_session(selected_orders)
+    
+    # Lancer l'optimisation avec l'algorithme amélioré
+     try:
+        result = self._run_enhanced_optimization(selected_orders, optimization_session)
         
-        # Créer une session d'optimisation
-        optimization_session = self._create_optimization_session(selected_orders)
-        
-        # Lancer l'optimisation avec l'algorithme amélioré
-        try:
-            result = self._run_enhanced_optimization(selected_orders, optimization_session)
+        if result:
+            # Appliquer les résultats
+            self._apply_enhanced_results(selected_orders, result, optimization_session)
             
-            if result:
-                # Appliquer les résultats
-                self._apply_enhanced_results(selected_orders, result, optimization_session)
-                
-                # Notification de succès
-                self._show_optimization_summary(result)
-                
-                return self._reload_optimized_view(selected_orders)
-            else:
-                raise UserError("Impossible de trouver une solution optimale")
-                
-        except Exception as e:
-            _logger.error(f"Optimization failed: {str(e)}")
-            optimization_session.write({'status': 'failed', 'error_message': str(e)})
-            raise UserError(f"Erreur d'optimisation: {str(e)}")
-
+            # Notification de succès simple
+            total_distance_km = result['total_distance'] / 1000
+            vehicles_used = len(result['routes'])
+            total_stops = result['total_stops']
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Optimisation VRP Terminée',
+                    'message': f'Optimisation réussie: {total_distance_km:.1f} km, {vehicles_used} véhicules, {total_stops} arrêts',
+                    'type': 'success',
+                    'sticky': True,
+                }
+            }
+        else:
+            raise UserError("Impossible de trouver une solution optimale")
+            
+     except Exception as e:
+        _logger.error(f"Optimization failed: {str(e)}")
+        optimization_session.write({'status': 'failed', 'error_message': str(e)})
+        raise UserError(f"Erreur d'optimisation: {str(e)}")
+    def _ensure_coordinates_computed(self, orders):  
+     """Forcer le recalcul des coordonnées GPS depuis le JSON"""  
+     # Forcer le recalcul pour les VRP orders liés  
+     vrp_orders = self.env['vrp.order'].search([  
+        ('sale_order_id', 'in', orders.ids)  
+     ])  
+     if vrp_orders:  
+        # Déclencher manuellement le recalcul  
+        for vrp_order in vrp_orders:  
+            vrp_order._compute_coordinates()
+            
     def _validate_orders_for_optimization(self, orders):
-        """Validation complète des commandes avant optimisation"""
-        # Vérifier les coordonnées
-        orders_without_coords = orders.filtered(
-            lambda o: not o.partner_latitude or not o.partner_longitude
-        )
-        if orders_without_coords:
-            missing_partners = orders_without_coords.mapped('partner_id.name')
-            raise UserError(
-                f"Les clients suivants n'ont pas de coordonnées GPS :\n"
-                f"• {chr(10).join(missing_partners)}\n\n"
-                f"Veuillez mettre à jour leurs adresses avec les coordonnées géographiques."
-            )
+     """Validation avec vérification directe du JSON coordinates + fallback sur les VRP orders"""
+    
+    # Vérifier directement les coordonnées JSON des partenaires
+     orders_without_coords = []
+    
+     for order in orders:
+        partner = order.partner_id
+        coordinates = partner.coordinates
         
-        # Vérifier les véhicules disponibles
-        available_vehicles = self.env['fleet.vehicle'].search([
-            ('driver_id', '!=', False),
-            ('active', '=', True),
-            ('state_id.name', 'not in', ['En Réparation', 'Hors Service'])
-        ])
+        # Variables pour stocker les coordonnées trouvées
+        lat, lng = 0.0, 0.0
+        coords_found = False
         
-        if not available_vehicles:
-            raise UserError("Aucun véhicule avec chauffeur disponible")
+        # 1. Essayer d'abord les coordonnées JSON du partenaire
+        if coordinates and isinstance(coordinates, dict):
+            try:
+                lat = float(coordinates.get('latitude', 0.0))
+                lng = float(coordinates.get('longitude', 0.0))
+                
+                # Validation des coordonnées
+                if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat != 0.0 and lng != 0.0):
+                    coords_found = True
+            except (ValueError, TypeError):
+                pass
         
-        # Vérifier la configuration du dépôt
-        #company = self.env.company
-        #if not company.vrp_depot_latitude or not company.vrp_depot_longitude:
-        #    raise UserError(
-        #        "Coordonnées du dépôt non configurées.\n"
-        #        "Coordonnées du dépôt non configurées.\n"
-        #        "Allez dans Configuration > VRP Configuration pour définir l'emplacement de votre dépôt."
-        #    )
-        depot_lat, depot_lng = 34.0209, -6.8416  # Rabat
-
-        _logger.info(f"Validation completed: {len(orders)} orders, {len(available_vehicles)} vehicles available")
-
+        # 2. Si pas de coordonnées JSON, essayer les VRP orders liés
+        if not coords_found:
+            vrp_order = self.env['vrp.order'].search([
+                ('sale_order_id', '=', order.id)
+            ], limit=1)
+            
+            if vrp_order:
+                # Forcer le recalcul des coordonnées
+                vrp_order._compute_coordinates()
+                
+                if vrp_order.partner_latitude and vrp_order.partner_longitude:
+                    if (vrp_order.partner_latitude != 0.0 and vrp_order.partner_longitude != 0.0):
+                        coords_found = True
+        
+         # 3. Si toujours pas de coordonnées, essayer les champs directs du partenaire
+        if not coords_found:
+            if hasattr(partner, 'partner_latitude') and hasattr(partner, 'partner_longitude'):
+                if partner.partner_latitude and partner.partner_longitude:
+                    if (partner.partner_latitude != 0.0 and partner.partner_longitude != 0.0):
+                        coords_found = True
+        
+        if not coords_found:
+            orders_without_coords.append(order)
+    
+     if orders_without_coords:
+        missing_partners = [o.partner_id.name for o in orders_without_coords]
+        
+        # Message d'erreur plus informatif
+        error_msg = f"Les clients suivants n'ont pas de coordonnées GPS valides :\n"
+        error_msg += f"• {chr(10).join(missing_partners)}\n\n"
+        error_msg += f"Solutions possibles :\n"
+        error_msg += f"1. Vérifiez que les adresses des clients sont complètes\n"
+        error_msg += f"2. Utilisez la géolocalisation automatique si disponible\n"
+        error_msg += f"3. Ajoutez manuellement les coordonnées GPS dans le champ 'coordinates'"
+        
+        raise UserError(error_msg)
+     
     def _create_optimization_session(self, orders):
         """Créer une session d'optimisation pour tracer les résultats"""
         return self.env['vrp.route.optimization'].create({
@@ -140,43 +192,26 @@ class SaleOrderEnhanced(models.Model):
         return result
 
     def _apply_enhanced_results(self, orders, result, session):
-        """Appliquer les résultats de l'optimisation améliorée"""
-        # Reset des affectations précédentes
-        orders.write({
-            'assigned_vehicle_id': False,
-            'delivery_sequence': 0,
-            'route_optimization_id': False,
-            'estimated_delivery_time': 0,
-            'road_distance_to_depot': 0,
-            'delivery_status': 'pending'
-        })
+     """Appliquer les résultats de l'optimisation améliorée - version simplifiée"""
+    # Reset seulement les champs de base
+     orders.write({
+        'assigned_vehicle_id': False,
+        'delivery_sequence': 0,
+     })
 
-        routes = result['routes']
-        stats = result['stats']
-        orders_dict = {order.id: order for order in orders}
+     routes = result['routes']
+     orders_dict = {order.id: order for order in orders}
 
-        for vehicle_id, order_ids in routes.items():
-            vehicle_stats = stats.get(vehicle_id, {})
-            
-            for sequence, order_id in enumerate(order_ids):
-                if order_id in orders_dict:
-                    order = orders_dict[order_id]
-                    
-                    # Calculer le temps de livraison estimé (basé sur distance et vitesse moyenne)
-                    avg_speed_kmh = 40  # Vitesse moyenne en ville
-                    distance_km = vehicle_stats.get('distance', 0) / 1000
-                    estimated_time = (distance_km / avg_speed_kmh) * 60  # en minutes
-                    
-                    order.write({
-                        'assigned_vehicle_id': vehicle_id,
-                        'delivery_sequence': sequence + 1,
-                        'route_optimization_id': session.id,
-                        'estimated_delivery_time': estimated_time / len(order_ids),  # Répartir le temps
-                        'road_distance_to_depot': distance_km / len(order_ids),  # Distance moyenne
-                        'delivery_status': 'optimized'
-                    })
+     for vehicle_id, order_ids in routes.items():
+        for sequence, order_id in enumerate(order_ids):
+            if order_id in orders_dict:
+                order = orders_dict[order_id]
+                order.write({
+                    'assigned_vehicle_id': int(vehicle_id),
+                    'delivery_sequence': sequence + 1,
+                })
 
-        _logger.info(f"Applied optimization results: {len(routes)} routes created")
+     _logger.info(f"Applied optimization results: {len(routes)} routes created")
 
     def _show_optimization_summary(self, result):
         """Afficher un résumé de l'optimisation"""
@@ -211,21 +246,28 @@ class SaleOrderEnhanced(models.Model):
             }
         }
 
-    def _reload_optimized_view(self, orders):
-        """Recharger la vue avec les résultats d'optimisation"""
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Livraisons Optimisées',
-            'res_model': 'sale.order',
-            'view_mode': 'tree,form',
-            'view_id': self.env.ref('vrp_module.sale_order_vrp_optimized_tree_view').id,
-            'domain': [('id', 'in', orders.ids)],
-            'context': {
-                'group_by': ['assigned_vehicle_id'],
-                'expand': True,
-                'search_default_optimized': 1
-            }
-        }
+    #def _reload_optimized_view(self, orders):
+    # """Version simple - juste une notification"""
+    # return {
+    #    'type': 'ir.actions.client',
+    #    'tag': 'reload',
+    # }
+    def _reload_optimized_view(self, orders):  
+     """Recharger la vue avec les résultats d'optimisation groupés par véhicule"""  
+     return {  
+        'type': 'ir.actions.act_window',  
+        'name': 'Livraisons Optimisées',  
+        'res_model': 'sale.order',  
+        'view_mode': 'tree,form',  
+        'view_id': self.env.ref('delivery_vrp.sale_order_vrp_tree_view').id,  
+        'domain': [('id', 'in', orders.ids)],  
+        'context': {  
+            'group_by': ['assigned_vehicle_id'],  
+            'expand': True,  
+            'search_default_optimized': 1  
+        }  
+     }
+
 
     def action_show_enhanced_map(self):
         """Afficher la carte avec itinéraires et métriques détaillées"""

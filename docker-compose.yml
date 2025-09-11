@@ -16,6 +16,7 @@ services:
       - ./config:/etc/odoo
       - ./addons:/mnt/extra-addons
       - ./data:/var/lib/odoo
+      - ./filestore:/root/.local/share/Odoo/filestore  
       - ./logs:/var/log/odoo
     environment:
       - HOST=db

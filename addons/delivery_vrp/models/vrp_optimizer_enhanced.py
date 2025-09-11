@@ -2,6 +2,7 @@
 from odoo import models, fields, api
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
+from odoo.exceptions import UserError, ValidationError
 import requests
 import json
 import time
@@ -279,110 +280,161 @@ class VRPOptimizerEnhanced(models.TransientModel):
             matrix.append(row)
         return matrix
 
+    # Dans models/vrp_optimizer_enhanced.py
+    # Remplacez la méthode solve_vrp_with_road_distances par cette version corrigée :
+
     def solve_vrp_with_road_distances(self, sale_orders, vehicles):
-        """Résolution du VRP avec distances routières réelles"""
-        settings = self._get_company_settings()
+     """Résolution du VRP avec distances routières réelles"""
+     settings = self._get_company_settings()
+    
+    # Préparer les locations avec le dépôt
+     depot_location = {
+        'lat': settings['depot_latitude'], 
+        'lng': settings['depot_longitude'],
+        'type': 'depot'
+     }
+    
+     locations = [depot_location]
+     order_mapping = {}  # Mapping location_index -> order_id
+     valid_orders = []
+    
+    # NOUVELLE LOGIQUE : Récupérer les coordonnées de manière robuste
+     for i, order in enumerate(sale_orders):
+        lat, lng = 0.0, 0.0
+        coords_found = False
         
-        # Préparer les locations avec le dépôt
-        depot_location = {
-            'lat': settings['depot_latitude'], 
-            'lng': settings['depot_longitude'],
-            'type': 'depot'
-        }
+        # 1. Essayer les coordonnées JSON du partenaire
+        partner = order.partner_id
+        if partner.coordinates and isinstance(partner.coordinates, dict):
+            try:
+                lat = float(partner.coordinates.get('latitude', 0.0))
+                lng = float(partner.coordinates.get('longitude', 0.0))
+                
+                if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat != 0.0 and lng != 0.0):
+                    coords_found = True
+            except (ValueError, TypeError):
+                pass
         
-        locations = [depot_location]
-        order_mapping = {}  # Mapping location_index -> order_id
+        # 2. Si pas trouvé, essayer via VRP order
+        if not coords_found:
+            vrp_order = self.env['vrp.order'].search([
+                ('sale_order_id', '=', order.id)
+            ], limit=1)
+            
+            if vrp_order:
+                # Forcer le recalcul
+                vrp_order._compute_coordinates()
+                if vrp_order.partner_latitude and vrp_order.partner_longitude:
+                    if (vrp_order.partner_latitude != 0.0 and vrp_order.partner_longitude != 0.0):
+                        lat = vrp_order.partner_latitude
+                        lng = vrp_order.partner_longitude
+                        coords_found = True
         
-        for i, order in enumerate(sale_orders):
+        # 3. Si encore pas trouvé, essayer les champs directs
+        if not coords_found and hasattr(order, 'partner_latitude') and hasattr(order, 'partner_longitude'):
+            if order.partner_latitude and order.partner_longitude:
+                if (order.partner_latitude != 0.0 and order.partner_longitude != 0.0):
+                    lat = order.partner_latitude
+                    lng = order.partner_longitude
+                    coords_found = True
+        
+        # Ajouter seulement si coordonnées valides trouvées
+        if coords_found:
             locations.append({
-                'lat': order.partner_latitude,
-                'lng': order.partner_longitude,
+                'lat': lat,
+                'lng': lng,
                 'type': 'customer',
                 'order_id': order.id
             })
-            order_mapping[i + 1] = order.id  # +1 car dépôt = 0
-
-        _logger.info(f"Starting VRP optimization for {len(sale_orders)} orders with {len(vehicles)} vehicles")
-
-        # Calculer la matrice de distance routière
-        distance_matrix = self.create_road_distance_matrix(locations)
-        
-        # Configuration du problème VRP
-        data = {
-            'distance_matrix': distance_matrix,
-            'num_vehicles': len(vehicles),
-            'depot': 0,
-            'vehicle_capacities': [100] * len(vehicles),  # Capacité par défaut
-            'demands': [0] + [1] * len(sale_orders)  # Demande par client
-        }
-
-        # Créer le manager et le modèle
-        manager = pywrapcp.RoutingIndexManager(
-            len(data['distance_matrix']),
-            data['num_vehicles'],
-            data['depot']
-        )
-        routing = pywrapcp.RoutingModel(manager)
-
-        # Callback de distance
-        def distance_callback(from_index, to_index):
-            from_node = manager.IndexToNode(from_index)
-            to_node = manager.IndexToNode(to_index)
-            return data['distance_matrix'][from_node][to_node]
-
-        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-
-        # Ajouter contrainte de distance
-        dimension_name = 'Distance'
-        routing.AddDimension(
-            transit_callback_index,
-            0,  # slack
-            100000,  # distance maximum par véhicule (100km)
-            True,  # start cumul to zero
-            dimension_name
-        )
-        distance_dimension = routing.GetDimensionOrDie(dimension_name)
-        distance_dimension.SetGlobalSpanCostCoefficient(100)
-
-        # Contrainte de capacité
-        def demand_callback(from_index):
-            from_node = manager.IndexToNode(from_index)
-            return data['demands'][from_node]
-
-        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-        routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,  # slack_max
-            data['vehicle_capacities'],  # vehicle maximum capacities
-            True,  # start cumul to zero
-            'Capacity'
-        )
-
-        # Paramètres de recherche avancés
-        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        search_parameters.first_solution_strategy = (
-            routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
-        )
-        search_parameters.local_search_metaheuristic = (
-            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-        )
-        search_parameters.time_limit.FromSeconds(30)  # 30 secondes max
-        search_parameters.log_search = True
-
-        _logger.info("Starting OR-Tools optimization...")
-        
-        # Résolution
-        solution = routing.SolveWithParameters(search_parameters)
-
-        if solution:
-            _logger.info(f"Optimization completed successfully. Total distance: {solution.ObjectiveValue()}m")
-            return self._extract_enhanced_solution(
-                manager, routing, solution, sale_orders, vehicles, order_mapping
-            )
+            order_mapping[len(valid_orders) + 1] = order.id  # +1 car dépôt = 0
+            valid_orders.append(order)
         else:
-            _logger.error("No solution found for VRP problem")
-            return False
+            _logger.warning(f"Commande {order.name} ignorée - pas de coordonnées valides")
+
+     if not valid_orders:
+        raise UserError("Aucune commande avec coordonnées GPS valides")
+
+     _logger.info(f"Starting VRP optimization for {len(valid_orders)} orders with valid coordinates")
+
+    # Calculer la matrice de distance routière
+     distance_matrix = self.create_road_distance_matrix(locations)
+    
+    # Configuration du problème VRP
+     data = {
+        'distance_matrix': distance_matrix,
+        'num_vehicles': len(vehicles),
+        'depot': 0,
+        'vehicle_capacities': [100] * len(vehicles),  # Capacité par défaut
+        'demands': [0] + [1] * len(valid_orders)  # Demande par client
+     }
+
+    # Créer le manager et le modèle
+     manager = pywrapcp.RoutingIndexManager(
+        len(data['distance_matrix']),
+        data['num_vehicles'],
+        data['depot']
+     )
+     routing = pywrapcp.RoutingModel(manager)
+
+    # Callback de distance
+     def distance_callback(from_index, to_index):
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return data['distance_matrix'][from_node][to_node]
+
+     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+    # Ajouter contrainte de distance
+     dimension_name = 'Distance'
+     routing.AddDimension(
+        transit_callback_index,
+        0,  # slack
+        200000,  # distance maximum par véhicule (100km)
+        True,  # start cumul to zero
+        dimension_name
+     )
+     distance_dimension = routing.GetDimensionOrDie(dimension_name)
+     distance_dimension.SetGlobalSpanCostCoefficient(100)
+
+    # Contrainte de capacité
+     def demand_callback(from_index):
+        from_node = manager.IndexToNode(from_index)
+        return data['demands'][from_node]
+
+     demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+     routing.AddDimensionWithVehicleCapacity(
+        demand_callback_index,
+        0,  # slack_max
+        data['vehicle_capacities'],  # vehicle maximum capacities
+        True,  # start cumul to zero
+        'Capacity'
+     )
+
+    # Paramètres de recherche avancés
+     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+     search_parameters.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
+     )
+     search_parameters.local_search_metaheuristic = (
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+     )
+     search_parameters.time_limit.FromSeconds(120)  
+     search_parameters.log_search = True
+
+     _logger.info("Starting OR-Tools optimization...")
+    
+    # Résolution
+     solution = routing.SolveWithParameters(search_parameters)
+
+     if solution:
+        _logger.info(f"Optimization completed successfully. Total distance: {solution.ObjectiveValue()}m")
+        return self._extract_enhanced_solution(
+            manager, routing, solution, valid_orders, vehicles, order_mapping
+        )
+     else:
+        _logger.error("No solution found for VRP problem")
+        return False
 
     def _extract_enhanced_solution(self, manager, routing, solution, sale_orders, vehicles, order_mapping):
         """Extraction de la solution avec métriques détaillées"""

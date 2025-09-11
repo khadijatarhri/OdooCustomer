@@ -2,6 +2,11 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError  
 import math  
 import json
+
+import logging
+
+_logger = logging.getLogger(__name__)
+
 try:  
     from ortools.constraint_solver import routing_enums_pb2  
     from ortools.constraint_solver import pywrapcp  
@@ -48,14 +53,27 @@ class VrpOrder(models.Model):
     @api.depends('sale_order_id.partner_id.coordinates')  
     def _compute_coordinates(self):  
      for record in self:  
-        coordinates = record.sale_order_id.partner_id.coordinates  
-        if coordinates and isinstance(coordinates, dict):  
-            record.partner_latitude = coordinates.get('latitude', 0.0)  
-            record.partner_longitude = coordinates.get('longitude', 0.0)  
-        else:  
+        try:  
+            partner = record.sale_order_id.partner_id  
+            coordinates = partner.coordinates  
+              
+            if coordinates and isinstance(coordinates, dict):  
+                lat = float(coordinates.get('latitude', 0.0))  
+                lng = float(coordinates.get('longitude', 0.0))  
+                  
+                # Validation des coordonnées  
+                if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat != 0.0 or lng != 0.0):  
+                    record.partner_latitude = lat  
+                    record.partner_longitude = lng  
+                else:  
+                    record.partner_latitude = 0.0  
+                    record.partner_longitude = 0.0  
+            else:  
+                record.partner_latitude = 0.0  
+                record.partner_longitude = 0.0  
+        except Exception:  
             record.partner_latitude = 0.0  
             record.partner_longitude = 0.0
-
 
     def action_optimize_delivery_enhanced(self):  
      """Redirection vers l'optimisation améliorée des sale orders"""  

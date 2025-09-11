@@ -5,3 +5,7 @@ access_vrp_order_user,vrp.order.user,model_vrp_order,group_vrp_user,1,1,1,1
 access_vrp_order_manager,vrp.order.manager,model_vrp_order,group_vrp_manager,1,1,1,1
 access_vrp_map_view_user,vrp.map.view.user,model_vrp_map_view,group_vrp_user,1,1,1,1
 access_vrp_map_view_manager,vrp.map.view.manager,model_vrp_map_view,group_vrp_manager,1,1,1,1
+access_vrp_route_optimization,access_vrp_route_optimization,model_vrp_route_optimization,group_vrp_user,1,1,1,1
+access_vrp_depot,access_vrp_depot,model_vrp_depot,group_vrp_user,1,1,1,1
+access_vrp_optimizer,access_vrp_optimizer,model_vrp_optimizer,group_vrp_user,1,1,1,1
+access_vrp_optimizer_enhanced,access_vrp_optimizer_enhanced,model_vrp_optimizer_enhanced,base.group_user,1,1,1,1
