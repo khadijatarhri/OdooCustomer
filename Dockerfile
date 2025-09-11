@@ -24,6 +24,11 @@ RUN pip3 install --break-system-packages matplotlib numpy
 RUN mkdir -p /var/lib/odoo/.local /var/lib/odoo/.cache && \  
     chown -R odoo:odoo /var/lib/odoo && \  
     chmod -R 755 /var/lib/odoo
+
+
+RUN mkdir -p /var/lib/odoo/.local/share/Odoo && \  
+    chown -R odoo:odoo /var/lib/odoo/.local && \  
+    chmod -R 755 /var/lib/odoo/.local
   
 # Copier les fichiers de configuration et addons      
 COPY config/odoo.conf /etc/odoo/      

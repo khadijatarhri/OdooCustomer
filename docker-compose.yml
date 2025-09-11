@@ -7,6 +7,7 @@ services:
     # Ou utiliser l'image officielle directement :
     # image: odoo:18
     container_name: odoo18
+    user: root
     depends_on:
       - db
     ports:
