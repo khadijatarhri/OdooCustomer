@@ -74,15 +74,57 @@ class VrpOrder(models.Model):
         except Exception:  
             record.partner_latitude = 0.0  
             record.partner_longitude = 0.0
-
+    """
     def action_optimize_delivery_enhanced(self):  
-     """Redirection vers l'optimisation améliorée des sale orders"""  
-     # Récupérer les sale orders correspondants  
+     # Optimisation améliorée avec synchronisation automatique
+     #Récupérer les sale orders correspondants  
      sale_orders = self.mapped('sale_order_id')  
       
-     # Appeler l'optimisation améliorée sur les sale orders  
-     return sale_orders.action_optimize_delivery_enhanced()
+    # Appeler l'optimisation améliorée sur les sale orders  
+     result = sale_orders.action_optimize_delivery_enhanced()  
+      
+    # SYNCHRONISATION AUTOMATIQUE après optimisation  
+     for vrp_order in self:  
+        sale_order = vrp_order.sale_order_id  
+        # Copier les résultats depuis sale.order vers vrp.order  
+        vrp_order.write({  
+            'assigned_vehicle_id': sale_order.assigned_vehicle_id.id if sale_order.assigned_vehicle_id else False,  
+            'delivery_sequence': sale_order.delivery_sequence,  
+        })  
+      
+    # FORCER LE RECHARGEMENT DE LA VUE AVEC GROUPEMENT  
+     return {  
+        'type': 'ir.actions.act_window',  
+        'name': 'Commandes VRP Optimisées',  
+        'res_model': 'vrp.order',  
+        'view_mode': 'list',  # UN SEUL MODE DE VUE  
+        'domain': [('id', 'in', self.ids)],  
+        'context': {  
+            'group_by': ['assigned_vehicle_id'],  
+            'expand': True  
+        } 
+     }
+    """
 
+    def action_optimize_delivery_enhanced(self):  
+     """Optimisation améliorée avec synchronisation automatique"""  
+    # Récupérer les sale orders correspondants  
+     sale_orders = self.mapped('sale_order_id')  
+      
+    # Appeler l'optimisation améliorée sur les sale orders  
+     result = sale_orders.action_optimize_delivery_enhanced()  
+      
+    # SYNCHRONISATION AUTOMATIQUE après optimisation  
+     for vrp_order in self:  
+        sale_order = vrp_order.sale_order_id  
+        # Copier les résultats depuis sale.order vers vrp.order  
+        vrp_order.write({  
+            'assigned_vehicle_id': sale_order.assigned_vehicle_id.id if sale_order.assigned_vehicle_id else False,  
+            'delivery_sequence': sale_order.delivery_sequence,  
+        })  
+      
+    # Retourner la notification de succès au lieu d'une action de rechargement  
+     return result
   
     def action_optimize_delivery(self):  
         """Optimisation complète avec OR-Tools"""  

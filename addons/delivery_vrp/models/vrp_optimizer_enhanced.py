@@ -346,10 +346,17 @@ class VRPOptimizerEnhanced(models.TransientModel):
                 'type': 'customer',
                 'order_id': order.id
             })
-            order_mapping[len(valid_orders) + 1] = order.id  # +1 car dépôt = 0
+            order_mapping[len(locations) - 1] = order.id  # Index correct basé sur la position dans locations
             valid_orders.append(order)
         else:
             _logger.warning(f"Commande {order.name} ignorée - pas de coordonnées valides")
+
+     _logger.info(f"Order mapping créé: {order_mapping}")    
+     _logger.info(f"Locations créées: {len(locations)}")    
+     for i, location in enumerate(locations):    
+        if i > 0:  # Ignorer le dépôt    
+            _logger.info(f"Location {i}: {location.get('order_id', 'N/A')}")  
+  
 
      if not valid_orders:
         raise UserError("Aucune commande avec coordonnées GPS valides")

@@ -180,6 +180,9 @@ class SaleOrderEnhanced(models.Model):
         result = optimizer.solve_vrp_with_road_distances(orders, vehicles)
         
         if result:
+            _logger.info(f"Routes retournées : {result['routes']}")
+            for vehicle_id, order_ids in result['routes'].items():
+                _logger.info(f"Véhicule {vehicle_id}: commandes {order_ids}")
             # Enregistrer les statistiques de la session
             session.write({
                 'status': 'completed',
@@ -207,11 +210,21 @@ class SaleOrderEnhanced(models.Model):
             if order_id in orders_dict:
                 order = orders_dict[order_id]
                 order.write({
-                    'assigned_vehicle_id': int(vehicle_id),
+                    'assigned_vehicle_id': vehicle_id,
                     'delivery_sequence': sequence + 1,
+                    'driver_id': self.env['fleet.vehicle'].browse(vehicle_id).driver_id.id
                 })
+                _logger.info(f"Commande {order.name} assignée au véhicule {vehicle_id}, séquence {sequence + 1}")
+
 
      _logger.info(f"Applied optimization results: {len(routes)} routes created")
+     vehicle_ids = list(routes.keys())
+     existing_vehicles = self.env['fleet.vehicle'].browse(vehicle_ids).exists()
+     _logger.info(f"Véhicules à assigner: {vehicle_ids}")
+     _logger.info(f"Véhicules existants: {existing_vehicles.ids}")
+     assigned_orders = orders.filtered('assigned_vehicle_id')
+     _logger.info(f"Commandes assignées: {len(assigned_orders)}/{len(orders)}")
+
 
     def _show_optimization_summary(self, result):
         """Afficher un résumé de l'optimisation"""
