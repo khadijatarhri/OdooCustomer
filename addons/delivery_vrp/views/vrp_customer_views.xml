@@ -27,7 +27,7 @@
                     <button name="action_optimize_delivery_enhanced" type="object" string="Optimize Enhanced" class="btn-primary"/>
                     <button name="action_show_map" type="object" string="Map" class="btn-secondary"/>  
                 </header>  
-                <field name="assigned_vehicle_id" invisible="1"/>  
+                <!--<field name="assigned_vehicle_id" invisible="1"/>  -->  
                 <field name="delivery_sequence" string="Seq"/>  
                 <field name="name" string="Delivery Order"/>  
                 <field name="partner_id" string="Customer"/>  
