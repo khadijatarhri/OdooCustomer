@@ -127,11 +127,29 @@ class VrpOrder(models.Model):
         return result
 
     def action_show_map(self):
-        """Déléguer à sale.order pour la carte avec gestion sécurisée"""
-        sale_orders = self.mapped('sale_order_id').exists()
-        if not sale_orders:
-            raise UserError("Aucune commande de vente valide trouvée pour afficher la carte")
-        return sale_orders.action_show_map()
+        """Afficher la carte avec les itinéraires VRP"""
+        selected_orders = self.browse(self.env.context.get('active_ids', [])) or self
+        
+        if not selected_orders:
+            raise UserError("Veuillez sélectionner au moins une commande VRP")
+        
+        # Préparer les données pour la carte
+        vehicles_data = self._prepare_map_data(selected_orders)
+        
+        # Créer un enregistrement temporaire pour la vue de carte
+        map_view = self.env['vrp.map.view'].create({
+            'vehicles_data': json.dumps(vehicles_data)
+        })
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Carte des Itinéraires VRP',
+            'res_model': 'vrp.map.view',
+            'res_id': map_view.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'dialog_size': 'large'}
+        }
 
     def _prepare_map_data(self, orders):
         """Préparer les données pour la carte"""

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue pour la carte des itinéraires VRP -->
+    <record id="vrp_map_view_form" model="ir.ui.view">
+        <field name="name">vrp.map.view.form</field>
+        <field name="model">vrp.map.view</field>
+        <field name="arch" type="xml">
+            <form string="Carte des Itinéraires VRP">
+                <div class="o_vrp_map_container" style="height: 600px; width: 100%; position: relative;">
+                    <field name="vehicles_data" widget="vrp_route_map" style="height: 600px; width: 100%;"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action pour ouvrir la carte -->
+    <record id="vrp_map_action" model="ir.actions.act_window">
+        <field name="name">Carte des Itinéraires</field>
+        <field name="res_model">vrp.map.view</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="vrp_map_view_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

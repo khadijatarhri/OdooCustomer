@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>  
-<templates>  
-    <t t-name="delivery_vrp.VRPRouteMapTemplate">  
-        <div class="o_vrp_route_map_widget">  
-            <div t-ref="map" class="vrp-map" style="height: 500px; width: 100%; min-height: 500px; display: block;"></div>
-            <div t-if="!state.isLoaded" class="vrp-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">  
-                <i class="fa fa-spinner fa-spin"/> Chargement de la carte...  
-            </div>  
-        </div>  
-    </t>  
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="delivery_vrp.VRPRouteMapTemplate">
+        <div class="o_vrp_route_map_widget">
+            <div t-ref="map" class="vrp-map"></div>
+            <div t-if="!state.isLoaded" class="vrp-loading">
+                <i class="fa fa-spinner fa-spin"/> Chargement de la carte...
+            </div>
+        </div>
+    </t>
 </templates>

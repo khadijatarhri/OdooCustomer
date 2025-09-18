@@ -1,4 +1,5 @@
 /** @odoo-module **/
+// static/src/js/vrp_route_map_widget_corrected.js
 
 import { registry } from '@web/core/registry';
 import { Component, useState, useRef, onMounted } from '@odoo/owl';
@@ -21,273 +22,382 @@ export class VRPRouteMapWidget extends Component {
         });
 
         onMounted(() => {
-            console.log("=== VRP WIDGET MOUNTED ===");
+            console.log("=== VRP WIDGET MOUNTED (CORRECTED) ===");
             this.debugWidgetState();
 
             this.loadMapLibraries().then(() => {
-                console.log("Libraries loaded, calling initMap...");
-                this.initMap();
+                console.log("Libraries loaded, initializing corrected map...");
+                setTimeout(() => {
+                    this.initCorrectedMap();
+                }, 100);
             }).catch(error => {
                 console.error('Failed to load map libraries:', error);
+                this.state.isLoaded = true;
             });
         });
     }
 
     debugWidgetState() {
-        console.log("=== WIDGET DEBUG INFO ===");
-        console.log("1. Widget mounted");
+        console.log("=== WIDGET DEBUG INFO (CORRECTED) ===");
+        console.log("1. Widget mounted with corrections");
         console.log("2. MapRef element:", this.mapRef.el);
-        console.log("3. Props:", this.props);
-        console.log("4. State:", this.state);
-
-        if (this.mapRef.el) {
-            const rect = this.mapRef.el.getBoundingClientRect();
-            console.log("5. Container dimensions:", rect);
-            console.log("6. Container styles:", {
-                height: this.mapRef.el.style.height,
-                width: this.mapRef.el.style.width,
-                display: this.mapRef.el.style.display
+        console.log("3. Field value:", this.props.record?.data?.[this.props.name]);
+        
+        // Debugging spécifique pour les données véhicules
+        const rawData = this.props.record?.data?.[this.props.name] || '[]';
+        try {
+            const vehiclesData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            console.log("4. Parsed vehicles data:", vehiclesData);
+            console.log("5. Number of vehicles:", vehiclesData.length);
+            
+            vehiclesData.forEach((vehicle, idx) => {
+                console.log(`   Vehicle ${idx + 1}: ${vehicle.vehicle_name} with ${vehicle.waypoints?.length || 0} waypoints`);
+                if (vehicle.waypoints) {
+                    vehicle.waypoints.forEach((wp, wpIdx) => {
+                        console.log(`     Waypoint ${wpIdx + 1}: ${wp.name} (${wp.lat}, ${wp.lng}) seq:${wp.sequence} type:${wp.type}`);
+                    });
+                }
             });
-        } else {
-            console.warn("5. Container element not found!");
+        } catch (e) {
+            console.error("Error parsing vehicle data:", e);
         }
         console.log("================================");
     }
 
     async loadMapLibraries() {
-        console.log("=== LIBRARY LOADING DEBUG ===");
-        console.log("Starting library loading...");
+        console.log("=== LOADING LIBRARIES (CORRECTED) ===");
 
         if (window.L) {
             console.log("Leaflet already loaded, version:", window.L.version);
-            if (window.L.Routing) {
-                console.log("Leaflet Routing Machine already loaded");
-            }
             return;
         }
 
         try {
-            console.log("Loading Leaflet CSS...");
             await loadCSS("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-            console.log("✓ Leaflet CSS loaded");
-
-            console.log("Loading Leaflet JS...");
             await loadJS("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-            console.log("✓ Leaflet JS loaded, version:", window.L?.version);
-
-            console.log("Loading Leaflet Routing Machine CSS...");
             await loadCSS("https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css");
-            console.log("✓ Leaflet Routing Machine CSS loaded");
-
-            console.log("Loading Leaflet Routing Machine JS...");
             await loadJS("https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js");
-            console.log("✓ Leaflet Routing Machine JS loaded");
-
-            console.log("All libraries loaded successfully");
-            console.log("Window.L available:", !!window.L);
-            console.log("Window.L.Routing available:", !!(window.L && window.L.Routing));
-
+            
+            console.log("All libraries loaded successfully (corrected)");
         } catch (error) {
             console.error("Library loading failed:", error);
             throw error;
         }
-        console.log("=== END LIBRARY LOADING ===");
     }
 
-    initMap() {
-        console.log("=== INIT MAP DEBUG ===");
+    initCorrectedMap() {
+        console.log("=== INITIALIZING CORRECTED MAP ===");
 
         try {
-            // Debug des données reçues  
-            console.log("1. Starting initMap");
-            console.log("2. Props received:", this.props);
-
-            // Validation et parsing des données JSON  
+            // Validation et parsing des données
             let vehiclesData;
+            const rawData = this.props.record?.data?.[this.props.name] || '[]';
+            console.log("Raw vehicles data:", rawData);
+
             try {
-                const rawData = this.props.record.data[this.props.name] || '[]';
-                console.log("3. Raw vehicles data:", rawData);
-                console.log("4. Data type:", typeof rawData);
-
                 vehiclesData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-                console.log("5. Parsed vehicles data:", vehiclesData);
-                console.log("6. Is array:", Array.isArray(vehiclesData));
-                console.log("7. Array length:", vehiclesData?.length);
-
                 if (!Array.isArray(vehiclesData)) {
                     console.warn('Vehicles data is not an array, using empty array');
                     vehiclesData = [];
                 }
             } catch (error) {
                 console.error('Invalid JSON data:', error);
-                console.error('Raw data was:', this.props.record.data[this.props.name]);
                 vehiclesData = [];
             }
 
-            if (!vehiclesData.length) {
-                console.log("8. No vehicles data, setting isLoaded = true and returning");
+            // Configuration du conteneur
+            const mapContainer = this.mapRef.el;
+            if (!mapContainer) {
+                console.error('Map container not found');
                 this.state.isLoaded = true;
                 return;
             }
 
-            // Debug du conteneur  
-            console.log("9. Getting map container reference...");
-            const mapContainer = this.mapRef.el;
-            console.log("10. Map container element:", mapContainer);
-
-            if (!mapContainer) {
-                console.error('Map container not found');
-                return;
-            }
-
-            // Debug des dimensions avant modification  
-            const rectBefore = mapContainer.getBoundingClientRect();
-            console.log("11. Container dimensions before styling:", rectBefore);
-            console.log("12. Container computed styles before:", window.getComputedStyle(mapContainer));
-
-            // Forcer les dimensions du conteneur  
-            console.log("13. Forcing container dimensions...");
-            mapContainer.style.height = mapContainer.style.height || '500px';
-            mapContainer.style.width = mapContainer.style.width || '100%';
+            mapContainer.style.height = '500px';
+            mapContainer.style.width = '100%';
             mapContainer.style.minHeight = '500px';
+            mapContainer.style.position = 'relative';
 
-            // Debug des dimensions après modification  
-            const rectAfter = mapContainer.getBoundingClientRect();
-            console.log("14. Container dimensions after styling:", rectAfter);
-            console.log("15. Container styles after:", {
-                height: mapContainer.style.height,
-                width: mapContainer.style.width,
-                minHeight: mapContainer.style.minHeight
-            });
-
-            // Vérifier que Leaflet est disponible  
-            console.log("16. Checking Leaflet availability...");
-            console.log("17. window.L available:", !!window.L);
             if (!window.L) {
                 console.error("Leaflet not available!");
+                this.state.isLoaded = true;
                 return;
             }
 
-            // Initialiser la carte Leaflet  
-            console.log("18. Initializing Leaflet map...");
-            try {
-                this.state.map = L.map(mapContainer).setView([33.5731, -7.5898], 10);
-                console.log("19. ✓ Map created successfully:", this.state.map);
-            } catch (mapError) {
-                console.error("20. ✗ Map creation failed:", mapError);
+            // Créer la carte centrée sur Rabat (dépôt par défaut)
+            console.log("Creating Leaflet map centered on Rabat...");
+            this.state.map = L.map(mapContainer).setView([34.0209, -6.8416], 10);
+
+            // Ajouter les tuiles
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors",
+            }).addTo(this.state.map);
+
+            // Si aucune donnée, afficher carte vide centrée sur Rabat
+            if (!vehiclesData || vehiclesData.length === 0) {
+                console.log("No vehicle data, showing empty map centered on Rabat");
+                // Ajouter un marqueur pour le dépôt
+                L.marker([34.0209, -6.8416])
+                    .bindPopup('<b>Dépôt - Rabat</b><br>Point de départ des livraisons')
+                    .addTo(this.state.map);
+                this.state.isLoaded = true;
                 return;
             }
 
-            // Ajouter les tuiles  
-            console.log("21. Adding tile layer...");
-            try {
-                L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                    attribution: "&copy; OpenStreetMap contributors",
-                }).addTo(this.state.map);
-                console.log("22. ✓ Tile layer added successfully");
-            } catch (tileError) {
-                console.error("23. ✗ Tile layer failed:", tileError);
-            }
+            // Traiter chaque véhicule avec routes séquentielles
+            this.processVehicleRoutesSequentially(vehiclesData);
 
-            // Couleurs pour différencier les véhicules  
-            const colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen'];
-            console.log("24. Processing vehicles data...");
-
-            // Traiter chaque véhicule  
-            vehiclesData.forEach((vehicleData, index) => {
-                console.log(`25.${index + 1}. Processing vehicle:`, vehicleData.vehicle_name);
-                const color = colors[index % colors.length];
-                this.addVehicleRoute(vehicleData, color);
-            });
-
-            console.log("26. Setting isLoaded = true");
             this.state.isLoaded = true;
-            console.log("27. ✓ Map initialization completed successfully");
+            console.log("Corrected map initialization completed successfully");
 
         } catch (error) {
-            console.error('28. ✗ Error initializing map:', error);
-            console.error('Error stack:', error.stack);
+            console.error('Error initializing corrected map:', error);
             this.state.isLoaded = true;
         }
-
-        console.log("=== END INIT MAP DEBUG ===");
     }
 
-    addVehicleRoute(vehicleData, color) {
-        console.log(`=== ADDING ROUTE FOR ${vehicleData.vehicle_name} ===`);
+    processVehicleRoutesSequentially(vehiclesData) {
+        console.log(`=== PROCESSING ${vehiclesData.length} VEHICLES SEQUENTIALLY ===`);
+        
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+        let allValidPoints = [];
 
-        if (!vehicleData.waypoints || !vehicleData.waypoints.length) {
-            console.warn('No waypoints for vehicle:', vehicleData.vehicle_name);
-            return;
-        }
+        vehiclesData.forEach((vehicleData, index) => {
+            console.log(`\n=== VEHICLE ${index + 1}: ${vehicleData.vehicle_name} ===`);
+            
+            if (!vehicleData.waypoints || vehicleData.waypoints.length === 0) {
+                console.warn(`No waypoints for vehicle: ${vehicleData.vehicle_name}`);
+                return;
+            }
 
-        console.log(`Waypoints for ${vehicleData.vehicle_name}:`, vehicleData.waypoints);
+            const color = vehicleData.vehicle_color || colors[index % colors.length];
+            console.log(`Using color: ${color}`);
 
-        const waypoints = vehicleData.waypoints.map(point => {
-            console.log(`Creating waypoint: lat=${point.lat}, lng=${point.lng}`);
-            return L.latLng(point.lat, point.lng);
+            // Trier les waypoints par séquence pour assurer l'ordre correct
+            const sortedWaypoints = [...vehicleData.waypoints].sort((a, b) => {
+                return (a.sequence || 0) - (b.sequence || 0);
+            });
+
+            console.log(`Waypoints sorted by sequence:`);
+            sortedWaypoints.forEach((wp, idx) => {
+                console.log(`  ${idx + 1}. ${wp.name} (seq: ${wp.sequence}) - ${wp.lat}, ${wp.lng} [${wp.type}]`);
+            });
+
+            // Valider et filtrer les waypoints
+            const validWaypoints = sortedWaypoints.filter(point => {
+                const isValid = point.lat && point.lng && 
+                               point.lat !== 0 && point.lng !== 0 &&
+                               !isNaN(point.lat) && !isNaN(point.lng) &&
+                               Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180;
+                
+                if (!isValid) {
+                    console.warn(`Invalid waypoint filtered out: ${point.name}`);
+                }
+                return isValid;
+            });
+
+            if (validWaypoints.length === 0) {
+                console.warn(`No valid waypoints for vehicle: ${vehicleData.vehicle_name}`);
+                return;
+            }
+
+            console.log(`Valid waypoints: ${validWaypoints.length}/${sortedWaypoints.length}`);
+
+            // Ajouter les marqueurs séquentiels
+            this.addSequentialMarkers(validWaypoints, vehicleData, color);
+
+            // Créer la route si au moins 2 points
+            if (validWaypoints.length >= 2) {
+                this.createSequentialRoute(validWaypoints, vehicleData, color);
+            }
+
+            // Collecter tous les points valides pour l'ajustement de la vue
+            allValidPoints.push(...validWaypoints);
         });
 
-        // Ajouter des marqueurs pour chaque point  
-        vehicleData.waypoints.forEach((point, index) => {
-            console.log(`Adding marker ${index + 1} for ${vehicleData.vehicle_name}`);
+        // Ajuster la vue pour inclure tous les points
+        if (allValidPoints.length > 0) {
+            this.fitMapToAllPoints(allValidPoints);
+        }
+    }
+
+    addSequentialMarkers(waypoints, vehicleData, color) {
+        console.log(`Adding ${waypoints.length} sequential markers for ${vehicleData.vehicle_name}`);
+
+        waypoints.forEach((point, index) => {
             try {
-                const marker = L.marker([point.lat, point.lng])
-                    .bindPopup(`  
-                        <strong>${vehicleData.vehicle_name}</strong><br>  
-                        Séquence: ${point.sequence}<br>  
-                        Client: ${point.name}<br>  
-                        Adresse: ${point.address}  
+                let markerOptions = {
+                    radius: 8,
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                };
+
+                // Style différencié selon le type
+                if (point.type === 'depot' || point.type === 'depot_return') {
+                    markerOptions.color = '#28a745';
+                    markerOptions.fillColor = '#28a745';
+                    markerOptions.radius = 10;
+                } else {
+                    markerOptions.color = color;
+                    markerOptions.fillColor = color;
+                }
+
+                const marker = L.circleMarker([point.lat, point.lng], markerOptions)
+                    .bindPopup(`
+                        <div class="vrp-marker-popup" style="min-width: 200px;">
+                            <div style="font-weight: bold; color: ${color}; margin-bottom: 5px;">
+                                ${vehicleData.vehicle_name}
+                            </div>
+                            <div style="font-size: 12px;">
+                                <strong>Type:</strong> ${this.getTypeLabel(point.type)}<br>
+                                <strong>Séquence:</strong> ${point.sequence}<br>
+                                <strong>Nom:</strong> ${point.name || 'N/A'}<br>
+                                <strong>Adresse:</strong> ${point.address || 'N/A'}
+                                ${point.order_name ? '<br><strong>Commande:</strong> ' + point.order_name : ''}
+                            </div>
+                        </div>
                     `)
                     .addTo(this.state.map);
 
                 this.state.markers.push(marker);
-                console.log(`✓ Marker ${index + 1} added successfully`);
+                console.log(`✓ Marker ${index + 1} added: ${point.name} (${point.lat}, ${point.lng})`);
             } catch (markerError) {
                 console.error(`✗ Failed to add marker ${index + 1}:`, markerError);
             }
         });
+    }
 
-        // Créer le contrôle de routage avec OSRM  
-        console.log(`Creating routing control for ${vehicleData.vehicle_name}...`);
+    createSequentialRoute(waypoints, vehicleData, color) {
+        console.log(`Creating sequential route for ${vehicleData.vehicle_name} with ${waypoints.length} waypoints`);
+
         try {
+            // Créer les waypoints pour Leaflet Routing Machine dans l'ordre séquentiel
+            const routeWaypoints = waypoints.map(point => L.latLng(point.lat, point.lng));
+            
+            console.log(`Route waypoints order:`);
+            routeWaypoints.forEach((wp, idx) => {
+                console.log(`  ${idx + 1}. ${wp.lat}, ${wp.lng}`);
+            });
+
             const routingControl = L.Routing.control({
-                waypoints: waypoints,
+                waypoints: routeWaypoints,
                 routeWhileDragging: false,
                 addWaypoints: false,
-                createMarker: function () { return null; }, // Pas de marqueurs supplémentaires  
+                createMarker: function() { return null; }, // Pas de marqueurs supplémentaires
                 lineOptions: {
-                    styles: [{ color: color, weight: 4, opacity: 0.7 }]
+                    styles: [{
+                        color: color,
+                        weight: 4,
+                        opacity: 0.8,
+                        dashArray: null // Ligne continue
+                    }]
                 },
                 router: L.Routing.osrmv1({
-                    serviceUrl: 'https://router.project-osrm.org/route/v1'
-                })
-            }).addTo(this.state.map);
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                    timeout: 30000
+                }),
+                show: false, // Cacher le panneau d'instructions
+                autoRoute: true,
+                fitSelectedRoutes: false
+            });
 
+            // Gestion des erreurs de routage
+            routingControl.on('routingerror', (e) => {
+                console.warn(`Routing error for ${vehicleData.vehicle_name}:`, e.error);
+                // Fallback: ligne droite simple
+                const fallbackRoute = L.polyline(routeWaypoints, {
+                    color: color,
+                    weight: 3,
+                    opacity: 0.6,
+                    dashArray: '10, 10'
+                }).bindPopup(`Route ${vehicleData.vehicle_name} (ligne directe)`).addTo(this.state.map);
+                
+                this.state.routes.push(fallbackRoute);
+                console.log(`✓ Fallback route created for ${vehicleData.vehicle_name}`);
+            });
+
+            // Confirmation de création de route
+            routingControl.on('routesfound', (e) => {
+                console.log(`✓ Sequential route found for ${vehicleData.vehicle_name}`);
+                
+                // Ajouter des informations sur la route
+                const routes = e.routes;
+                if (routes.length > 0) {
+                    const route = routes[0];
+                    const distance = (route.summary.totalDistance / 1000).toFixed(2);
+                    const time = Math.round(route.summary.totalTime / 60);
+                    console.log(`   Distance: ${distance}km, Temps: ${time}min`);
+                }
+            });
+
+            routingControl.addTo(this.state.map);
             this.state.routes.push(routingControl);
-            console.log(`✓ Routing control added for ${vehicleData.vehicle_name}`);
-        } catch (routingError) {
-            console.error(`✗ Failed to create routing control for ${vehicleData.vehicle_name}:`, routingError);
-        }
+            
+            console.log(`✓ Sequential routing control added for ${vehicleData.vehicle_name}`);
 
-        // Ajuster la vue pour inclure tous les points  
-        if (waypoints.length > 0 && this.state.markers.length > 0) {
-            console.log("Adjusting map bounds to fit all markers...");
+        } catch (routingError) {
+            console.error(`✗ Failed to create sequential routing for ${vehicleData.vehicle_name}:`, routingError);
+            
+            // Fallback ultime: ligne droite simple
             try {
-                const group = new L.featureGroup(this.state.markers);
-                this.state.map.fitBounds(group.getBounds().pad(0.1));
-                console.log("✓ Map bounds adjusted successfully");
-            } catch (boundsError) {
-                console.error("✗ Failed to adjust map bounds:", boundsError);
+                const routeWaypoints = waypoints.map(point => L.latLng(point.lat, point.lng));
+                const fallbackRoute = L.polyline(routeWaypoints, {
+                    color: color,
+                    weight: 3,
+                    opacity: 0.5,
+                    dashArray: '5, 10'
+                }).bindPopup(`${vehicleData.vehicle_name} (route simplifiée)`).addTo(this.state.map);
+                
+                this.state.routes.push(fallbackRoute);
+                console.log(`✓ Ultimate fallback route created for ${vehicleData.vehicle_name}`);
+            } catch (fallbackError) {
+                console.error(`✗ Even ultimate fallback failed for ${vehicleData.vehicle_name}:`, fallbackError);
             }
         }
+    }
 
-        console.log(`=== END ROUTE FOR ${vehicleData.vehicle_name} ===`);
+    fitMapToAllPoints(allPoints) {
+        console.log(`Adjusting map bounds to fit ${allPoints.length} points...`);
+        
+        try {
+            if (allPoints.length === 0) {
+                console.log("No points to fit, keeping default view on Rabat");
+                return;
+            }
+
+            const bounds = L.latLngBounds();
+            allPoints.forEach(point => {
+                bounds.extend([point.lat, point.lng]);
+            });
+
+            // S'assurer que Rabat (dépôt) est inclus
+            bounds.extend([34.0209, -6.8416]);
+
+            this.state.map.fitBounds(bounds, {
+                padding: [20, 20],
+                maxZoom: 15
+            });
+            
+            console.log("✓ Map bounds adjusted successfully to include all sequential points");
+        } catch (boundsError) {
+            console.error("✗ Failed to adjust map bounds:", boundsError);
+        }
+    }
+
+    getTypeLabel(type) {
+        const labels = {
+            'depot': 'Dépôt',
+            'depot_return': 'Retour Dépôt',
+            'customer': 'Client'
+        };
+        return labels[type] || 'Inconnu';
     }
 }
 
+// Enregistrement du widget corrigé
 const vrpRouteMapWidget = {
-    displayName: 'VRP Route Map Widget',
+    displayName: 'VRP Route Map Widget (Corrected)',
     component: VRPRouteMapWidget,
     supportedTypes: ['text'],
 };

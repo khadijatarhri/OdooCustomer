@@ -1,4 +1,4 @@
-# models/res_config_settings.py
+# models/res_config_settings_corrected.py
 from odoo import models, fields, api
 
 class ResConfigSettings(models.TransientModel):
@@ -54,14 +54,29 @@ class ResConfigSettings(models.TransientModel):
                     'message': 'La longitude doit être entre -180 et 180'
                 }}
     
+    def action_set_rabat_depot(self):
+        """Définir rapidement Rabat comme dépôt"""
+        self.vrp_depot_latitude = 34.0209
+        self.vrp_depot_longitude = -6.8416
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Dépôt Configuré',
+                'message': 'Rabat défini comme dépôt principal (34.0209, -6.8416)',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+    
     def action_test_routing_service(self):
         """Tester la connexion au service de routage"""
         optimizer = self.env['vrp.optimizer.enhanced'].create({})
         
-        # Test avec deux points fictifs
+        # Test avec Casablanca vers Rabat
         test_locations = [
-            {'lat': 33.5731, 'lng': -7.5898},  # Casablanca
-            {'lat': 34.0209, 'lng': -6.8416}   # Rabat
+            {'lat': 33.5731, 'lng': -7.5898, 'name': 'Casablanca'},
+            {'lat': 34.0209, 'lng': -6.8416, 'name': 'Rabat'}
         ]
         
         try:

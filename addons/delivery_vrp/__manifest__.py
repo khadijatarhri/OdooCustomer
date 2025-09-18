@@ -33,6 +33,7 @@
      'data/vrp_data.xml',               # 3. Données de base  
      'views/vrp_vehicle_views.xml',      # 4. Vues des véhicules  
      'views/vrp_customer_views.xml',     # 5. Vues des clients  
+     'views/vrp_map_view.xml',
      'views/res_config_settings_views.xml', # 6. Configuration  
      'views/vrp_menus.xml',             # 7. Menus en dernier  
 ],

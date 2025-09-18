@@ -4,8 +4,6 @@ services:
 
   web:
     build: .
-    # Ou utiliser l'image officielle directement :
-    # image: odoo:18
     container_name: odoo18
     user: root
     depends_on:
@@ -18,14 +16,19 @@ services:
       - ./data:/var/lib/odoo
       - ./filestore:/root/.local/share/Odoo/filestore  
       - ./logs:/var/log/odoo
+      - ./kafka-addon:/mnt/extra-addons/kafka_integration:ro   
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo_password
       - OPENAI_API_KEY=votre_cle_api_openai
-
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:29092             
+      - KAFKA_ENABLED=true                                     
     restart: unless-stopped
     command: odoo --dev=reload,qweb,werkzeug,xml
+    networks:
+       default :
+       kafka-integration :
 
   db:
     image: postgres:15
@@ -40,8 +43,9 @@ services:
     ports:
       - "5433:5432"
     restart: unless-stopped
+    networks:
+      - default
 
-  # Optionnel : pgAdmin pour gérer la base de données
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: odoo18-pgadmin
@@ -53,7 +57,29 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - default
+
+  # Service optionnel : installation de l'addon Kafka (si besoin)
+  odoo-kafka-installer:
+    image: alpine:latest
+    container_name: odoo-kafka-installer
+    volumes:
+      - ../kafka-orchestrator/network-bridge/odoo-kafka-addon:/source:ro
+      - ./kafka-addon:/destination
+    command: |
+      sh -c "
+        echo '📦 Installation de l addon Kafka pour Odoo...'
+        cp -r /source/* /destination/ 2>/dev/null || true
+        echo '✅ Addon Kafka installé'
+        "
+    restart: "no"
 
 volumes:
   postgresql:
   odoo-data:
+
+networks:
+  default:
+  kafka-integration:
+    name: kafka-integration-network
