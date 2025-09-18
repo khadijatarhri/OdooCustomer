@@ -277,63 +277,103 @@ class VRPOptimizerEnhanced(models.TransientModel):
             return False
 
     def _extract_corrected_solution(self, manager, routing, solution, sale_orders, vehicles):
-        """Extraction corrigée de la solution avec mapping précis"""
-        routes = {}
-        route_stats = {}
+     """Extraction corrigée de la solution avec mapping précis et debugging"""
+     routes = {}
+     route_stats = {}
+    
+     _logger.info("=== EXTRACTION SOLUTION AVEC DEBUG COMPLET ===")
+     _logger.info(f"Véhicules disponibles: {len(vehicles)}")
+     _logger.info(f"Commandes valides: {len(sale_orders)}")
+     _logger.info(f"Commandes ordre: {[(i, o.name, o.id) for i, o in enumerate(sale_orders)]}")
+    
+     for vehicle_idx in range(len(vehicles)):
+        vehicle = vehicles[vehicle_idx]
+        index = routing.Start(vehicle_idx)
+        route_order_ids = []
+        route_distance = 0
+        node_sequence = []
         
-        _logger.info("=== EXTRACTION SOLUTION ===")
-        _logger.info(f"Véhicules disponibles: {len(vehicles)}")
-        _logger.info(f"Commandes valides: {len(sale_orders)}")
+        _logger.info(f"\n--- VÉHICULE {vehicle_idx}: {vehicle.name} ---")
         
-        for vehicle_idx in range(len(vehicles)):
-            vehicle = vehicles[vehicle_idx]
-            index = routing.Start(vehicle_idx)
-            route_order_ids = []
-            route_distance = 0
+        # Parcourir la route complète
+        route_nodes = []
+        temp_index = index
+        while not routing.IsEnd(temp_index):
+            node = manager.IndexToNode(temp_index)
+            route_nodes.append(node)
+            temp_index = solution.Value(routing.NextVar(temp_index))
+        
+        _logger.info(f"Route complète nodes: {route_nodes}")
+        
+        # Traiter chaque node
+        for i, node in enumerate(route_nodes):
+            if node == 0:
+                _logger.info(f"  Node {node} = DÉPÔT (ignoré)")
+                continue
             
-            _logger.info(f"Traitement véhicule {vehicle_idx}: {vehicle.name}")
+            # CRUCIAL: Le mapping correct
+            # node 1 = première commande (index 0), node 2 = deuxième commande (index 1), etc.
+            order_index = node - 1
             
-            while not routing.IsEnd(index):
-                node = manager.IndexToNode(index)
-                
-                if node > 0:  # Ignorer le dépôt (node 0)
-                    # Le node correspond à l'index dans la liste des locations
-                    # node 1 = première commande, node 2 = deuxième commande, etc.
-                    order_idx = node - 1  # -1 car node 0 = dépôt
-                    if 0 <= order_idx < len(sale_orders):
-                        order = sale_orders[order_idx]
-                        route_order_ids.append(order.id)
-                        _logger.info(f"  - Node {node} -> Commande {order.name} (ID: {order.id})")
-                
-                # Calculer la distance
-                if not routing.IsEnd(index):
-                    next_index = solution.Value(routing.NextVar(index))
-                    route_distance += routing.GetArcCostForVehicle(index, next_index, vehicle_idx)
-                
-                index = solution.Value(routing.NextVar(index))
-            
-            if route_order_ids:
-                routes[vehicle.id] = route_order_ids
-                route_stats[vehicle.id] = {
-                    'distance': route_distance,
-                    'stops': len(route_order_ids),
-                    'vehicle_name': vehicle.name,
-                    'driver': vehicle.driver_id.name if vehicle.driver_id else 'N/A'
-                }
-                _logger.info(f"✓ {vehicle.name}: {len(route_order_ids)} arrêts, {route_distance/1000:.2f}km")
+            if 0 <= order_index < len(sale_orders):
+                order = sale_orders[order_index]
+                route_order_ids.append(order.id)
+                node_sequence.append({
+                    'node': node,
+                    'order_index': order_index,
+                    'order_id': order.id,
+                    'order_name': order.name,
+                    'sequence_in_route': len(route_order_ids)  # Position dans cette route
+                })
+                _logger.info(f"  ✅ Node {node} -> Order_index {order_index} -> {order.name} (ID: {order.id}) - Séquence: {len(route_order_ids)}")
+            else:
+                _logger.error(f"  ❌ Node {node} -> Order_index {order_index} HORS LIMITE (max: {len(sale_orders)-1})")
         
-        # Statistiques globales
-        total_distance = sum(stats['distance'] for stats in route_stats.values())
-        total_stops = sum(stats['stops'] for stats in route_stats.values())
+        # Calculer distance totale pour ce véhicule
+        temp_index = routing.Start(vehicle_idx)
+        while not routing.IsEnd(temp_index):
+            next_index = solution.Value(routing.NextVar(temp_index))
+            if not routing.IsEnd(next_index):
+                route_distance += routing.GetArcCostForVehicle(temp_index, next_index, vehicle_idx)
+            temp_index = next_index
         
-        _logger.info(f"=== RÉSUMÉ SOLUTION ===")
-        _logger.info(f"Distance totale: {total_distance/1000:.2f} km")
-        _logger.info(f"Arrêts totaux: {total_stops}")
-        _logger.info(f"Véhicules utilisés: {len(routes)}")
-        
-        return {
-            'routes': routes,
-            'stats': route_stats,
-            'total_distance': total_distance,
-            'total_stops': total_stops
+        # Stocker les résultats si des commandes sont assignées
+        if route_order_ids:
+            routes[vehicle.id] = route_order_ids
+            route_stats[vehicle.id] = {
+                'distance': route_distance,
+                'stops': len(route_order_ids),
+                'vehicle_name': vehicle.name,
+                'driver': vehicle.driver_id.name if vehicle.driver_id else 'N/A',
+                'node_sequence': node_sequence  # Pour debugging
+            }
+            _logger.info(f"✅ RÉSULTAT {vehicle.name}: {len(route_order_ids)} commandes, {route_distance/1000:.2f}km")
+            for seq_info in node_sequence:
+                _logger.info(f"    Séq {seq_info['sequence_in_route']}: {seq_info['order_name']}")
+        else:
+            _logger.info(f"⚪ {vehicle.name}: Aucune commande assignée")
+    
+    # Vérification finale
+     total_assigned = sum(len(order_ids) for order_ids in routes.values())
+     _logger.info(f"\n=== VÉRIFICATION FINALE ===")
+     _logger.info(f"Commandes à assigner: {len(sale_orders)}")
+     _logger.info(f"Commandes assignées: {total_assigned}")
+     _logger.info(f"Véhicules utilisés: {len(routes)}")
+    
+     if total_assigned != len(sale_orders):
+        _logger.warning(f"⚠️  ATTENTION: {len(sale_orders) - total_assigned} commandes non assignées!")
+    
+    # Statistiques globales
+     total_distance = sum(stats['distance'] for stats in route_stats.values())
+    
+     return {
+        'routes': routes,
+        'stats': route_stats,
+        'total_distance': total_distance,
+        'total_stops': total_assigned,
+        'debug_info': {
+            'input_orders_count': len(sale_orders),
+            'assigned_orders_count': total_assigned,
+            'vehicles_used': len(routes)
         }
+     } 

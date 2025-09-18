@@ -150,6 +150,40 @@ class VrpOrder(models.Model):
             'target': 'new',
             'context': {'dialog_size': 'large'}
         }
+     
+
+    def action_show_map_test_factice(self):
+     """TEST: Données factices pour vérifier le widget"""
+     fake_data = [{
+        'vehicle_name': 'Camion Test',
+        'vehicle_id': 1,
+        'driver_name': 'Chauffeur Test', 
+        'vehicle_color': '#e74c3c',
+        'waypoints': [
+            {
+                'lat': 34.0209, 'lng': -6.8416,
+                'name': 'Dépôt', 'sequence': 0, 'type': 'depot'
+            },
+            {
+                'lat': 33.5731, 'lng': -7.5898, 
+                'name': 'Client Casablanca', 'sequence': 1, 'type': 'customer'
+            }
+        ]
+     }]
+    
+     map_view = self.env['vrp.map.view'].create({
+        'vehicles_data': json.dumps(fake_data)
+     })
+    
+     return {
+        'type': 'ir.actions.act_window',
+        'name': 'TEST Carte Factice',
+        'res_model': 'vrp.map.view',
+        'res_id': map_view.id,
+        'view_mode': 'form',
+        'target': 'new'
+     }
+
 
     def _prepare_map_data(self, orders):
         """Préparer les données pour la carte"""
@@ -181,3 +215,83 @@ class VrpOrder(models.Model):
             })
         
         return json.dumps(vehicles_data)
+    
+    # Ajoutez cette méthode à votre modèle sale.order pour diagnostic
+    def action_debug_map_data_simple(self):
+     """Debug simple: Créer données test et afficher carte"""
+    
+    # Créer des données test simples et explicites
+     test_vehicles_data = [{
+        'vehicle_name': 'Test Vehicle Debug',
+        'vehicle_id': 999,
+        'driver_name': 'Test Driver',
+        'vehicle_color': '#ff0000',  # Rouge vif
+        'waypoints': [
+            {
+                'lat': 34.0209,
+                'lng': -6.8416,
+                'name': 'Dépôt Test',
+                'address': 'Point de départ',
+                'sequence': 0,
+                'type': 'depot'
+            },
+            {
+                'lat': 33.9716,
+                'lng': -6.8498,
+                'name': 'Client Test Salé',
+                'address': 'Salé, Maroc',
+                'sequence': 1,
+                'type': 'customer',
+                'order_name': 'SO001-TEST'
+            },
+            {
+                'lat': 34.0531,
+                'lng': -6.7985,
+                'name': 'Client Test Témara',
+                'address': 'Témara, Maroc',
+                'sequence': 2,
+                'type': 'customer',
+                'order_name': 'SO002-TEST'
+            },
+            {
+                'lat': 34.0209,
+                'lng': -6.8416,
+                'name': 'Retour Dépôt',
+                'address': 'Retour au point de départ',
+                'sequence': 3,
+                'type': 'depot_return'
+            }
+        ]
+     }]
+    
+     _logger.info("=== DEBUG DONNÉES TEST SIMPLES ===")
+     _logger.info(f"Véhicules test: {len(test_vehicles_data)}")
+     for vehicle in test_vehicles_data:
+        _logger.info(f"Véhicule: {vehicle['vehicle_name']}")
+        for wp in vehicle['waypoints']:
+            _logger.info(f"  - {wp['name']}: [{wp['lat']}, {wp['lng']}] type={wp['type']}")
+    
+    # Sérialiser en JSON
+     import json
+     vehicles_json = json.dumps(test_vehicles_data, ensure_ascii=False)
+     _logger.info(f"JSON créé: {len(vehicles_json)} caractères")
+    
+    # Créer map view
+     try:
+        map_view = self.env['vrp.map.view'].create({
+            'vehicles_data': vehicles_json
+        })
+        _logger.info(f"Map view test créée: ID {map_view.id}")
+     except Exception as e:
+        _logger.error(f"Erreur création map view test: {e}")
+        raise UserError(f"Erreur test: {e}")
+    
+     return {
+        'type': 'ir.actions.act_window',
+        'name': 'DEBUG - Données Test Simples',
+        'res_model': 'vrp.map.view',
+        'res_id': map_view.id,
+        'view_mode': 'form',
+        'target': 'new',
+        'context': {'dialog_size': 'large'}
+     }

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vue pour la carte des itinéraires VRP -->
+    < Vue pour la carte des itinéraires VRP >
     <record id="vrp_map_view_form" model="ir.ui.view">
         <field name="name">vrp.map.view.form</field>
         <field name="model">vrp.map.view</field>
@@ -13,12 +15,70 @@
         </field>
     </record>
 
-    <!-- Action pour ouvrir la carte -->
+    <Action pour ouvrir la carte >
     <record id="vrp_map_action" model="ir.actions.act_window">
         <field name="name">Carte des Itinéraires</field>
         <field name="res_model">vrp.map.view</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="vrp_map_view_form"/>
         <field name="target">new</field>
+    </record>
+</odoo>
+-->
+<odoo>
+    <!-- Template OWL pour le widget JavaScript -->
+    <template id="VRPRouteMapTemplate" name="VRP Route Map Template">
+        <div class="vrp-route-map-container" style="width: 100%; height: 600px; position: relative;">
+            <div t-if="!state.isLoaded" class="vrp-map-loading" 
+                 style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1000;">
+                <div class="fa fa-spin fa-spinner fa-2x" style="color: #007bff;"></div>
+                <div style="margin-top: 10px; color: #666;">Chargement de la carte VRP...</div>
+            </div>
+            
+            <div t-ref="map" class="vrp-leaflet-map" 
+                 style="width: 100%; height: 100%; min-height: 500px; z-index: 1; background: #f0f0f0;">
+            </div>
+            
+            <div class="vrp-map-controls" 
+                 style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <small style="color: #666; font-weight: bold;">Itinéraires VRP Optimisés</small>
+            </div>
+        </div>
+    </template>
+
+    <!-- Vue formulaire pour vrp.map.view -->
+    <record id="vrp_map_view_form" model="ir.ui.view">
+        <field name="name">vrp.map.view.form</field>
+        <field name="model">vrp.map.view</field>
+        <field name="arch" type="xml">
+            <form string="Carte des Itinéraires VRP">
+                <sheet style="padding: 0;">
+                    <div class="oe_title" style="margin-bottom: 15px;">
+                        <h1>Carte des Itinéraires VRP</h1>
+                        <p style="color: #666; margin: 5px 0;">Visualisation des routes optimisées et des points de livraison</p>
+                    </div>
+                    
+                    <group>
+                        <!-- CRUCIAL: Le champ doit utiliser exactement ce nom et widget -->
+                        <field name="vehicles_data" 
+                               widget="vrp_route_map" 
+                               nolabel="1" 
+                               colspan="2"
+                               options="{'no_quick_create': true}"
+                               style="min-height: 600px; width: 100%;"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action pour ouvrir la carte -->
+    <record id="vrp_map_action" model="ir.actions.act_window">
+        <field name="name">Carte des Itinéraires VRP</field>
+        <field name="res_model">vrp.map.view</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="vrp_map_view_form"/>
+        <field name="target">new</field>
+        <field name="context">{'dialog_size': 'large'}</field>
     </record>
 </odoo>
