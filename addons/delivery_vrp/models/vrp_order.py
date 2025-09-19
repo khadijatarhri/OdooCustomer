@@ -126,31 +126,21 @@ class VrpOrder(models.Model):
         # Retourner le résultat de l'optimisation
         return result
 
-    def action_show_map(self):
-        """Afficher la carte avec les itinéraires VRP"""
-        selected_orders = self.browse(self.env.context.get('active_ids', [])) or self
-        
-        if not selected_orders:
-            raise UserError("Veuillez sélectionner au moins une commande VRP")
-        
-        # Préparer les données pour la carte
-        vehicles_data = self._prepare_map_data(selected_orders)
-        
-        # Créer un enregistrement temporaire pour la vue de carte
-        map_view = self.env['vrp.map.view'].create({
-            'vehicles_data': json.dumps(vehicles_data)
-        })
-        
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Carte des Itinéraires VRP',
-            'res_model': 'vrp.map.view',
-            'res_id': map_view.id,
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'dialog_size': 'large'}
-        }
-     
+    def action_show_map(self):  
+     """Déléguer à la méthode sale.order qui fonctionne"""  
+     selected_orders = self.browse(self.env.context.get('active_ids', [])) or self  
+      
+     if not selected_orders:  
+        raise UserError("Veuillez sélectionner au moins une commande VRP")  
+      
+    # Récupérer les sale orders correspondantes  
+     sale_orders = selected_orders.mapped('sale_order_id')  
+      
+     if not sale_orders:  
+        raise UserError("Aucune commande de vente associée trouvée")  
+      
+    # Appeler la méthode sale.order qui fonctionne correctement  
+     return sale_orders.with_context(active_ids=sale_orders.ids).action_show_map()
 
     def action_show_map_test_factice(self):
      """TEST: Données factices pour vérifier le widget"""

@@ -456,7 +456,7 @@ class SaleOrder(models.Model):
         'target': 'new',
         'context': {
             'dialog_size': 'large',
-            # Supprimer default_vehicles_data pour éviter les conflits
+            'default_vehicles_data': valid_vehicles
         }
      }
 
