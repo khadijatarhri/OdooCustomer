@@ -1,4 +1,4 @@
-# models/vrp_optimizer_enhanced_corrected.py - VERSION CORRIGÉE
+# models/vrp_optimizer_enhanced.py - MODIFICATION POUR DÉPÔT PAR CHAUFFEUR
 from odoo import models, fields, api
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -13,9 +13,9 @@ _logger = logging.getLogger(__name__)
 
 class VRPOptimizerEnhanced(models.TransientModel):
     _name = 'vrp.optimizer.enhanced'
-    _description = 'Enhanced VRP Optimization Engine with Real Road Distances'
+    _description = 'Enhanced VRP Optimization Engine with Driver-Based Depots'
 
-    # Configuration des services de routage
+    # Configuration des services de routage (inchangé)
     ROUTING_SERVICES = {
         'osrm': {
             'base_url': 'http://router.project-osrm.org/table/v1/driving/',
@@ -41,28 +41,46 @@ class VRPOptimizerEnhanced(models.TransientModel):
     }
 
     def _get_company_settings(self):
-        """Récupérer les paramètres de routage centralisés"""
-        # Priorité 1: Paramètres de la société si disponibles
-        if hasattr(self.env.company, 'vrp_depot_latitude') and self.env.company.vrp_depot_latitude:
-            return {
-                'routing_service': getattr(self.env.company, 'vrp_routing_service', 'osrm'),
-                'openrouteservice_key': getattr(self.env.company, 'vrp_openrouteservice_key', ''),
-                'graphhopper_key': getattr(self.env.company, 'vrp_graphhopper_key', ''),
-                'depot_latitude': self.env.company.vrp_depot_latitude,
-                'depot_longitude': self.env.company.vrp_depot_longitude,
-            }
-        
-        # Priorité 2: Valeurs par défaut (Rabat)
+        """MODIFIÉ: Récupérer les paramètres de routage (sans dépôt fixe)"""
         return {
-            'routing_service': 'osrm',
-            'openrouteservice_key': '',
-            'graphhopper_key': '',
-            'depot_latitude': 34.0209,  # Rabat
-            'depot_longitude': -6.8416,
+            'routing_service': getattr(self.env.company, 'vrp_routing_service', 'osrm'),
+            'openrouteservice_key': getattr(self.env.company, 'vrp_openrouteservice_key', ''),
+            'graphhopper_key': getattr(self.env.company, 'vrp_graphhopper_key', ''),
+            # Plus de dépôt fixe - sera calculé par véhicule/chauffeur
         }
 
+    def _get_driver_coordinates(self, vehicle):
+        """NOUVEAU: Récupérer les coordonnées d'un chauffeur"""
+        if not vehicle.driver_id:
+            _logger.error(f"Véhicule {vehicle.name} sans chauffeur assigné")
+            return None, None, False
+        
+        driver = vehicle.driver_id
+        
+        # 1. Essayer les coordonnées JSON du chauffeur
+        if driver.coordinates and isinstance(driver.coordinates, dict):
+            try:
+                lat = float(driver.coordinates.get('latitude', 0.0))
+                lng = float(driver.coordinates.get('longitude', 0.0))
+                
+                if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat != 0.0 and lng != 0.0):
+                    _logger.info(f"✓ Coordonnées chauffeur {driver.name}: {lat}, {lng} (JSON)")
+                    return lat, lng, True
+            except (ValueError, TypeError):
+                pass
+        
+        # 2. Essayer les champs directs si disponibles
+        if hasattr(driver, 'partner_latitude') and hasattr(driver, 'partner_longitude'):
+            if driver.partner_latitude and driver.partner_longitude:
+                if (driver.partner_latitude != 0.0 and driver.partner_longitude != 0.0):
+                    _logger.info(f"✓ Coordonnées chauffeur {driver.name}: {driver.partner_latitude}, {driver.partner_longitude} (champs)")
+                    return driver.partner_latitude, driver.partner_longitude, True
+        
+        _logger.warning(f"✗ Aucune coordonnée trouvée pour le chauffeur {driver.name}")
+        return None, None, False
+
     def _calculate_euclidean_distance(self, lat1, lon1, lat2, lon2):
-        """Distance euclidienne de fallback"""
+        """Distance euclidienne de fallback (inchangé)"""
         R = 6371  # Rayon de la Terre en km
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
@@ -73,7 +91,7 @@ class VRPOptimizerEnhanced(models.TransientModel):
         return R * c * 1000  # Retour en mètres
 
     def _get_osrm_matrix(self, locations):
-        """Calculer la matrice de distance via OSRM"""
+        """Calculer la matrice de distance via OSRM (inchangé)"""
         try:
             coords_str = ";".join([f"{loc['lng']},{loc['lat']}" for loc in locations])
             url = f"http://router.project-osrm.org/table/v1/driving/{coords_str}"
@@ -99,7 +117,7 @@ class VRPOptimizerEnhanced(models.TransientModel):
             return None, None
 
     def create_road_distance_matrix(self, locations):
-        """Créer la matrice de distance routière"""
+        """Créer la matrice de distance routière (inchangé)"""
         settings = self._get_company_settings()
         service_name = settings['routing_service']
         
@@ -110,7 +128,6 @@ class VRPOptimizerEnhanced(models.TransientModel):
             return self._create_euclidean_matrix(locations)
         
         try:
-            # Utiliser OSRM par défaut (gratuit et fiable)
             if service_name == 'osrm':
                 distance_matrix, duration_matrix = self._get_osrm_matrix(locations)
             else:
@@ -135,7 +152,7 @@ class VRPOptimizerEnhanced(models.TransientModel):
             return self._create_euclidean_matrix(locations)
 
     def _create_euclidean_matrix(self, locations):
-        """Fallback vers la distance euclidienne"""
+        """Fallback vers la distance euclidienne (inchangé)"""
         _logger.info("Utilisation distance euclidienne comme fallback")
         matrix = []
         for i, from_loc in enumerate(locations):
@@ -152,40 +169,42 @@ class VRPOptimizerEnhanced(models.TransientModel):
             matrix.append(row)
         return matrix
 
-    def solve_vrp_with_road_distances(self, sale_orders, vehicles):
-        """Résolution du VRP avec distances routières réelles - VERSION CORRIGÉE"""
-        settings = self._get_company_settings()
-        
-        # Préparer les locations avec le dépôt en utilisant les coordonnées centralisées
-        depot_location = {
-            'lat': settings['depot_latitude'],
-            'lng': settings['depot_longitude'],
-            'type': 'depot',
-            'name': 'Dépôt - Rabat'
-        }
-        
-        locations = [depot_location]
-        valid_orders = []
-        
-        _logger.info(f"=== DÉBUT OPTIMISATION VRP ===")
-        _logger.info(f"Dépôt: {depot_location['lat']}, {depot_location['lng']}")
+    def solve_vrp_with_driver_based_depots(self, sale_orders, vehicles):
+        """MODIFIÉ: Résolution VRP avec dépôts basés sur les chauffeurs"""
+        _logger.info(f"=== VRP AVEC DÉPÔTS PAR CHAUFFEUR ===")
         _logger.info(f"Commandes à traiter: {len(sale_orders)}")
+        _logger.info(f"Véhicules disponibles: {len(vehicles)}")
         
-        # Utiliser la méthode unifiée des coordonnées depuis sale.order
-        for i, order in enumerate(sale_orders):
-            # Appeler la méthode unifiée du modèle sale.order
+        # Vérifier que tous les véhicules ont des chauffeurs avec coordonnées
+        valid_vehicles = []
+        for vehicle in vehicles:
+            lat, lng, coords_found = self._get_driver_coordinates(vehicle)
+            if coords_found:
+                valid_vehicles.append({
+                    'vehicle': vehicle,
+                    'driver_lat': lat,
+                    'driver_lng': lng
+                })
+                _logger.info(f"✓ Véhicule {vehicle.name} - Chauffeur: {vehicle.driver_id.name} ({lat}, {lng})")
+            else:
+                _logger.warning(f"✗ Véhicule {vehicle.name} ignoré - pas de coordonnées chauffeur")
+        
+        if not valid_vehicles:
+            raise UserError("Aucun véhicule avec chauffeur géolocalisé disponible")
+        
+        _logger.info(f"Véhicules valides: {len(valid_vehicles)}")
+        
+        # Préparer les commandes valides
+        valid_orders = []
+        for order in sale_orders:
             lat, lng, coords_found = order._get_order_coordinates_unified(order)
             
             if coords_found:
-                location = {
+                valid_orders.append({
+                    'order': order,
                     'lat': lat,
-                    'lng': lng,
-                    'type': 'customer',
-                    'order_id': order.id,
-                    'name': order.partner_id.name
-                }
-                locations.append(location)
-                valid_orders.append(order)
+                    'lng': lng
+                })
                 _logger.info(f"✓ Commande {order.name}: {lat}, {lng}")
             else:
                 _logger.warning(f"✗ Commande {order.name} ignorée - pas de coordonnées")
@@ -193,187 +212,150 @@ class VRPOptimizerEnhanced(models.TransientModel):
         if not valid_orders:
             raise UserError("Aucune commande avec coordonnées GPS valides")
         
-        _logger.info(f"Commandes valides: {len(valid_orders)}")
-        _logger.info(f"Total locations: {len(locations)}")
-        
-        # Calculer la matrice de distance routière
-        distance_matrix = self.create_road_distance_matrix(locations)
-        
-        # Configuration du problème VRP
-        data = {
-            'distance_matrix': distance_matrix,
-            'num_vehicles': len(vehicles),
-            'depot': 0,
-            'vehicle_capacities': [100] * len(vehicles),
-            'demands': [0] + [1] * len(valid_orders)
-        }
-        
-        # Créer le manager et le modèle OR-Tools
-        manager = pywrapcp.RoutingIndexManager(
-            len(data['distance_matrix']),
-            data['num_vehicles'],
-            data['depot']
-        )
-        routing = pywrapcp.RoutingModel(manager)
-        
-        # Callback de distance
-        def distance_callback(from_index, to_index):
-            from_node = manager.IndexToNode(from_index)
-            to_node = manager.IndexToNode(to_index)
-            return data['distance_matrix'][from_node][to_node]
-        
-        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-        
-        # Ajouter contrainte de distance
-        dimension_name = 'Distance'
-        routing.AddDimension(
-            transit_callback_index,
-            0,  # slack
-            200000,  # distance maximum par véhicule (200km)
-            True,  # start cumul to zero
-            dimension_name
-        )
-        distance_dimension = routing.GetDimensionOrDie(dimension_name)
-        distance_dimension.SetGlobalSpanCostCoefficient(100)
-        
-        # Contrainte de capacité
-        def demand_callback(from_index):
-            from_node = manager.IndexToNode(from_index)
-            return data['demands'][from_node]
-        
-        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-        routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,  # slack_max
-            data['vehicle_capacities'],
-            True,  # start cumul to zero
-            'Capacity'
-        )
-        
-        # Paramètres de recherche
-        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        search_parameters.first_solution_strategy = (
-            routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-        )
-        search_parameters.local_search_metaheuristic = (
-            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-        )
-        search_parameters.time_limit.FromSeconds(120)
-        search_parameters.log_search = True
-        
-        _logger.info("Démarrage optimisation OR-Tools...")
-        
-        # Résolution
-        solution = routing.SolveWithParameters(search_parameters)
-        
-        if solution:
-            _logger.info(f"✓ Optimisation réussie. Distance totale: {solution.ObjectiveValue()}m")
-            return self._extract_corrected_solution(
-                manager, routing, solution, valid_orders, vehicles
-            )
-        else:
-            _logger.error("✗ Aucune solution trouvée pour le problème VRP")
-            return False
+        # NOUVEAU ALGORITHME: Assignation par proximité géographique
+        return self._assign_orders_to_nearest_drivers(valid_orders, valid_vehicles)
 
-    def _extract_corrected_solution(self, manager, routing, solution, sale_orders, vehicles):
-     """Extraction corrigée de la solution avec mapping précis et debugging"""
-     routes = {}
-     route_stats = {}
-    
-     _logger.info("=== EXTRACTION SOLUTION AVEC DEBUG COMPLET ===")
-     _logger.info(f"Véhicules disponibles: {len(vehicles)}")
-     _logger.info(f"Commandes valides: {len(sale_orders)}")
-     _logger.info(f"Commandes ordre: {[(i, o.name, o.id) for i, o in enumerate(sale_orders)]}")
-    
-     for vehicle_idx in range(len(vehicles)):
-        vehicle = vehicles[vehicle_idx]
-        index = routing.Start(vehicle_idx)
-        route_order_ids = []
-        route_distance = 0
-        node_sequence = []
+    def _assign_orders_to_nearest_drivers(self, valid_orders, valid_vehicles):
+        """NOUVEAU: Assigner les commandes aux chauffeurs les plus proches"""
+        _logger.info("=== ASSIGNATION PAR PROXIMITÉ GÉOGRAPHIQUE ===")
         
-        _logger.info(f"\n--- VÉHICULE {vehicle_idx}: {vehicle.name} ---")
+        routes = {}
+        route_stats = {}
         
-        # Parcourir la route complète
-        route_nodes = []
-        temp_index = index
-        while not routing.IsEnd(temp_index):
-            node = manager.IndexToNode(temp_index)
-            route_nodes.append(node)
-            temp_index = solution.Value(routing.NextVar(temp_index))
+        # Pour chaque commande, trouver le chauffeur le plus proche
+        for order_data in valid_orders:
+            order = order_data['order']
+            order_lat = order_data['lat']
+            order_lng = order_data['lng']
+            
+            min_distance = float('inf')
+            closest_vehicle = None
+            
+            # Calculer la distance vers chaque chauffeur
+            for vehicle_data in valid_vehicles:
+                vehicle = vehicle_data['vehicle']
+                driver_lat = vehicle_data['driver_lat']
+                driver_lng = vehicle_data['driver_lng']
+                
+                # Distance euclidienne (rapide pour la sélection initiale)
+                distance = self._calculate_euclidean_distance(
+                    order_lat, order_lng, 
+                    driver_lat, driver_lng
+                )
+                
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_vehicle = vehicle
+            
+            # Assigner la commande au véhicule le plus proche
+            if closest_vehicle:
+                vehicle_id = closest_vehicle.id
+                if vehicle_id not in routes:
+                    routes[vehicle_id] = []
+                    route_stats[vehicle_id] = {
+                        'distance': 0,
+                        'stops': 0,
+                        'vehicle_name': closest_vehicle.name,
+                        'driver': closest_vehicle.driver_id.name,
+                        'driver_coords': (
+                            next(v['driver_lat'] for v in valid_vehicles if v['vehicle'] == closest_vehicle),
+                            next(v['driver_lng'] for v in valid_vehicles if v['vehicle'] == closest_vehicle)
+                        )
+                    }
+                
+                routes[vehicle_id].append(order.id)
+                route_stats[vehicle_id]['stops'] += 1
+                route_stats[vehicle_id]['distance'] += min_distance
+                
+                _logger.info(f"✅ {order.name} → {closest_vehicle.name} (distance: {min_distance/1000:.2f}km)")
         
-        _logger.info(f"Route complète nodes: {route_nodes}")
+        # Optimiser l'ordre des arrêts pour chaque véhicule
+        optimized_routes = self._optimize_stops_order_per_vehicle(routes, route_stats, valid_orders)
         
-        # Traiter chaque node
-        for i, node in enumerate(route_nodes):
-            if node == 0:
-                _logger.info(f"  Node {node} = DÉPÔT (ignoré)")
+        total_distance = sum(stats['distance'] for stats in route_stats.values())
+        total_stops = sum(len(order_ids) for order_ids in routes.values())
+        
+        _logger.info(f"=== RÉSULTAT ASSIGNATION ===")
+        _logger.info(f"Véhicules utilisés: {len(routes)}")
+        _logger.info(f"Commandes assignées: {total_stops}")
+        _logger.info(f"Distance totale approximative: {total_distance/1000:.2f}km")
+        
+        return {
+            'routes': optimized_routes,
+            'stats': route_stats,
+            'total_distance': total_distance,
+            'total_stops': total_stops,
+            'algorithm': 'driver_proximity_based'
+        }
+
+    def _optimize_stops_order_per_vehicle(self, routes, route_stats, valid_orders):
+        """NOUVEAU: Optimiser l'ordre des arrêts pour chaque véhicule"""
+        optimized_routes = {}
+        orders_dict = {order_data['order'].id: order_data for order_data in valid_orders}
+        
+        for vehicle_id, order_ids in routes.items():
+            if len(order_ids) <= 2:
+                # Pas besoin d'optimiser pour 1-2 arrêts
+                optimized_routes[vehicle_id] = order_ids
                 continue
             
-            # CRUCIAL: Le mapping correct
-            # node 1 = première commande (index 0), node 2 = deuxième commande (index 1), etc.
-            order_index = node - 1
+            # Récupérer les coordonnées du chauffeur
+            driver_coords = route_stats[vehicle_id]['driver_coords']
             
-            if 0 <= order_index < len(sale_orders):
-                order = sale_orders[order_index]
-                route_order_ids.append(order.id)
-                node_sequence.append({
-                    'node': node,
-                    'order_index': order_index,
-                    'order_id': order.id,
-                    'order_name': order.name,
-                    'sequence_in_route': len(route_order_ids)  # Position dans cette route
+            # Créer la liste des points (chauffeur + clients)
+            points = [{'lat': driver_coords[0], 'lng': driver_coords[1], 'type': 'driver'}]
+            
+            for order_id in order_ids:
+                order_data = orders_dict[order_id]
+                points.append({
+                    'lat': order_data['lat'],
+                    'lng': order_data['lng'],
+                    'order_id': order_id,
+                    'type': 'customer'
                 })
-                _logger.info(f"  ✅ Node {node} -> Order_index {order_index} -> {order.name} (ID: {order.id}) - Séquence: {len(route_order_ids)}")
-            else:
-                _logger.error(f"  ❌ Node {node} -> Order_index {order_index} HORS LIMITE (max: {len(sale_orders)-1})")
+            
+            # Algorithme du plus proche voisin pour optimiser l'ordre
+            optimized_order = self._nearest_neighbor_tsp(points, driver_coords)
+            optimized_routes[vehicle_id] = optimized_order
+            
+            _logger.info(f"Ordre optimisé pour {route_stats[vehicle_id]['vehicle_name']}: {len(optimized_order)} arrêts")
         
-        # Calculer distance totale pour ce véhicule
-        temp_index = routing.Start(vehicle_idx)
-        while not routing.IsEnd(temp_index):
-            next_index = solution.Value(routing.NextVar(temp_index))
-            if not routing.IsEnd(next_index):
-                route_distance += routing.GetArcCostForVehicle(temp_index, next_index, vehicle_idx)
-            temp_index = next_index
+        return optimized_routes
+
+    def _nearest_neighbor_tsp(self, points, start_coords):
+        """Algorithme du plus proche voisin pour optimiser l'ordre des arrêts"""
+        if len(points) <= 2:
+            return [p['order_id'] for p in points if p['type'] == 'customer']
         
-        # Stocker les résultats si des commandes sont assignées
-        if route_order_ids:
-            routes[vehicle.id] = route_order_ids
-            route_stats[vehicle.id] = {
-                'distance': route_distance,
-                'stops': len(route_order_ids),
-                'vehicle_name': vehicle.name,
-                'driver': vehicle.driver_id.name if vehicle.driver_id else 'N/A',
-                'node_sequence': node_sequence  # Pour debugging
-            }
-            _logger.info(f"✅ RÉSULTAT {vehicle.name}: {len(route_order_ids)} commandes, {route_distance/1000:.2f}km")
-            for seq_info in node_sequence:
-                _logger.info(f"    Séq {seq_info['sequence_in_route']}: {seq_info['order_name']}")
-        else:
-            _logger.info(f"⚪ {vehicle.name}: Aucune commande assignée")
-    
-    # Vérification finale
-     total_assigned = sum(len(order_ids) for order_ids in routes.values())
-     _logger.info(f"\n=== VÉRIFICATION FINALE ===")
-     _logger.info(f"Commandes à assigner: {len(sale_orders)}")
-     _logger.info(f"Commandes assignées: {total_assigned}")
-     _logger.info(f"Véhicules utilisés: {len(routes)}")
-    
-     if total_assigned != len(sale_orders):
-        _logger.warning(f"⚠️  ATTENTION: {len(sale_orders) - total_assigned} commandes non assignées!")
-    
-    # Statistiques globales
-     total_distance = sum(stats['distance'] for stats in route_stats.values())
-    
-     return {
-        'routes': routes,
-        'stats': route_stats,
-        'total_distance': total_distance,
-        'total_stops': total_assigned,
-        'debug_info': {
-            'input_orders_count': len(sale_orders),
-            'assigned_orders_count': total_assigned,
-            'vehicles_used': len(routes)
-        }
-     } 
+        # Commencer par le point de départ (chauffeur)
+        current_pos = start_coords
+        unvisited = [p for p in points if p['type'] == 'customer']
+        ordered_stops = []
+        
+        while unvisited:
+            # Trouver le client le plus proche
+            min_distance = float('inf')
+            closest_customer = None
+            
+            for customer in unvisited:
+                distance = self._calculate_euclidean_distance(
+                    current_pos[0], current_pos[1],
+                    customer['lat'], customer['lng']
+                )
+                
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_customer = customer
+            
+            # Ajouter le client le plus proche
+            if closest_customer:
+                ordered_stops.append(closest_customer['order_id'])
+                current_pos = (closest_customer['lat'], closest_customer['lng'])
+                unvisited.remove(closest_customer)
+        
+        return ordered_stops
+
+    # Méthode de compatibilité - rediriger vers la nouvelle méthode
+    def solve_vrp_with_road_distances(self, sale_orders, vehicles):
+        """Redirection vers la nouvelle méthode basée sur les chauffeurs"""
+        return self.solve_vrp_with_driver_based_depots(sale_orders, vehicles)

@@ -6,39 +6,368 @@ import logging
 _logger = logging.getLogger(__name__)
 
 class SaleOrder(models.Model):
-    _inherit = 'sale.order'
+ _inherit = 'sale.order'
     
-    assigned_vehicle_id = fields.Many2one('fleet.vehicle', string='Assigned Vehicle')
-    delivery_sequence = fields.Integer(string='Delivery Sequence', default=0)
-    partner_latitude = fields.Float(related='partner_id.partner_latitude', string='Latitude')
-    partner_longitude = fields.Float(related='partner_id.partner_longitude', string='Longitude')
-    manual_assignment = fields.Boolean(string='Manual Vehicle Assignment', default=False)
-    driver_id = fields.Many2one(related='assigned_vehicle_id.driver_id', string='Driver', readonly=True)
-    delivery_count = fields.Integer(string='Delivery Count', compute='_compute_delivery_count', store=True)
+ assigned_vehicle_id = fields.Many2one('fleet.vehicle', string='Assigned Vehicle')
+ delivery_sequence = fields.Integer(string='Delivery Sequence', default=0)
+ partner_latitude = fields.Float(related='partner_id.partner_latitude', string='Latitude')
+ partner_longitude = fields.Float(related='partner_id.partner_longitude', string='Longitude')
+ manual_assignment = fields.Boolean(string='Manual Vehicle Assignment', default=False)
+ driver_id = fields.Many2one(related='assigned_vehicle_id.driver_id', string='Driver', readonly=True)
+ delivery_count = fields.Integer(string='Delivery Count', compute='_compute_delivery_count', store=True)
 
-    @api.depends('order_line')
-    def _compute_delivery_count(self):
+ @api.depends('order_line')
+ def _compute_delivery_count(self):
         for order in self:
             order.delivery_count = len(order.order_line)
 
-    def _get_depot_coordinates(self):
-        """Obtenir les coordonnées du dépôt de manière centralisée"""
-        # Priorité 1: Paramètres de la société
-        if hasattr(self.env.company, 'vrp_depot_latitude') and self.env.company.vrp_depot_latitude:
-            return {
-                'latitude': self.env.company.vrp_depot_latitude,
-                'longitude': self.env.company.vrp_depot_longitude
-            }
-        
-        # Priorité 2: Valeurs par défaut (Rabat)
-        return {
-            'latitude': 34.0209,
-            'longitude': -6.8416
-        }
+    # models/sale_order.py - MODIFICATIONS POUR DÉPÔT PAR CHAUFFEUR
+
+# Ajouter ces méthodes modifiées à votre classe SaleOrder existante
+
+ def _get_depot_coordinates(self):
+    """OBSOLÈTE: Cette méthode n'est plus utilisée avec les dépôts par chauffeur"""
+    # Gardé pour compatibilité mais non utilisé
+    return {'latitude': 34.0209, 'longitude': -6.8416}
+
+ def _get_driver_coordinates_for_vehicle(self, vehicle):
+    """NOUVEAU: Récupérer les coordonnées d'un chauffeur de véhicule"""
+    if not vehicle or not vehicle.driver_id:
+        _logger.warning(f"Véhicule {vehicle.name if vehicle else 'None'} sans chauffeur")
+        return None, None, False
     
+    driver = vehicle.driver_id
+    
+    # 1. Essayer les coordonnées JSON du chauffeur
+    if driver.coordinates and isinstance(driver.coordinates, dict):
+        try:
+            lat = float(driver.coordinates.get('latitude', 0.0))
+            lng = float(driver.coordinates.get('longitude', 0.0))
+            
+            if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat != 0.0 and lng != 0.0):
+                _logger.info(f"✓ Coordonnées chauffeur {driver.name}: {lat}, {lng}")
+                return lat, lng, True
+        except (ValueError, TypeError):
+            pass
+    
+    # 2. Essayer les champs directs
+    if hasattr(driver, 'partner_latitude') and hasattr(driver, 'partner_longitude'):
+        if driver.partner_latitude and driver.partner_longitude:
+            if (driver.partner_latitude != 0.0 and driver.partner_longitude != 0.0):
+                return driver.partner_latitude, driver.partner_longitude, True
+    
+    _logger.warning(f"✗ Aucune coordonnée pour chauffeur {driver.name}")
+    return None, None, False
+
+ def action_optimize_delivery_enhanced(self):
+    """MODIFIÉ: Action d'optimisation avec dépôts par chauffeur"""
+    selected_orders = self.browse(self.env.context.get('active_ids', []))
+    
+    if not selected_orders:
+        raise UserError("Veuillez sélectionner au moins une commande")
+    
+    # Vérifier les coordonnées des commandes
+    orders_without_coords = []
+    for order in selected_orders:
+        lat, lng, coords_found = self._get_order_coordinates_unified(order)
+        if not coords_found:
+            orders_without_coords.append(order)
+    
+    if orders_without_coords:
+        raise UserError(
+            f"Les clients suivants n'ont pas de coordonnées : "
+            f"{', '.join(orders_without_coords.mapped('partner_id.name'))}"
+        )
+    
+    # Récupérer les véhicules avec chauffeurs géolocalisés
+    vehicles = self.env['fleet.vehicle'].search([
+        ('driver_id', '!=', False),
+        ('active', '=', True)
+    ])
+    
+    if not vehicles:
+        raise UserError("Aucun véhicule avec chauffeur disponible")
+    
+    # Vérifier que les chauffeurs ont des coordonnées
+    valid_vehicles = []
+    for vehicle in vehicles:
+        lat, lng, coords_found = self._get_driver_coordinates_for_vehicle(vehicle)
+        if coords_found:
+            valid_vehicles.append(vehicle)
+        else:
+            _logger.warning(f"Véhicule {vehicle.name} ignoré - chauffeur sans coordonnées")
+    
+    if not valid_vehicles:
+        raise UserError(
+            "Aucun véhicule avec chauffeur géolocalisé disponible. "
+            "Veuillez ajouter les coordonnées GPS des chauffeurs dans leurs fiches contact."
+        )
+    
+    # Lancer l'optimisation avec le nouvel algorithme
+    optimizer = self.env['vrp.optimizer.enhanced'].create({})
+    result = optimizer.solve_vrp_with_driver_based_depots(selected_orders, valid_vehicles)
+    
+    if not result or 'routes' not in result:
+        raise UserError("Impossible de trouver une solution optimale")
+    
+    # Appliquer les résultats
+    self._apply_optimization_results_enhanced(selected_orders, result, valid_vehicles)
+    
+    return self._reload_view_with_grouping()
+
+ def _prepare_map_data_corrected(self, orders):
+    """MODIFIÉ: Préparation données carte avec dépôts par chauffeur"""
+    vehicles_data = []
+    
+    _logger.info("=== PRÉPARATION CARTE AVEC DÉPÔTS CHAUFFEURS ===")
+    _logger.info(f"Commandes reçues: {len(orders)}")
+    
+    # Filtrer seulement les commandes optimisées
+    optimized_orders = orders.filtered('assigned_vehicle_id')
+    
+    if not optimized_orders:
+        _logger.warning("Aucune commande optimisée trouvée pour la carte")
+        return vehicles_data
+    
+    _logger.info(f"Commandes optimisées: {len(optimized_orders)}")
+    
+    # Grouper par véhicule
+    vehicles = optimized_orders.mapped('assigned_vehicle_id')
+    _logger.info(f"Véhicules trouvés: {[v.name for v in vehicles]}")
+    
+    for vehicle in vehicles:
+        if not vehicle:
+            continue
+        
+        # Récupérer les coordonnées du chauffeur (nouveau dépôt)
+        driver_lat, driver_lng, driver_coords_found = self._get_driver_coordinates_for_vehicle(vehicle)
+        
+        if not driver_coords_found:
+            _logger.warning(f"❌ Véhicule {vehicle.name} ignoré - pas de coordonnées chauffeur")
+            continue
+        
+        # Commandes triées par séquence pour ce véhicule
+        vehicle_orders = optimized_orders.filtered(lambda o: o.assigned_vehicle_id == vehicle)
+        vehicle_orders = vehicle_orders.sorted(lambda x: x.delivery_sequence or 0)
+        
+        _logger.info(f"=== VÉHICULE {vehicle.name} ===")
+        _logger.info(f"Coordonnées chauffeur: {driver_lat}, {driver_lng}")
+        _logger.info(f"Commandes triées: {[(o.name, o.delivery_sequence) for o in vehicle_orders]}")
+        
+        waypoints = []
+        
+        # 1. DÉPART: Position du chauffeur (nouveau dépôt)
+        driver_waypoint = {
+            'lat': float(driver_lat),
+            'lng': float(driver_lng),
+            'name': f'Départ - {vehicle.driver_id.name}',
+            'address': f'Position chauffeur: {vehicle.driver_id.name}',
+            'sequence': 0,
+            'type': 'driver_depot',
+            'driver_name': vehicle.driver_id.name,
+            'vehicle_name': vehicle.name
+        }
+        waypoints.append(driver_waypoint)
+        _logger.info(f"  ✅ Dépôt chauffeur ajouté: {driver_lat}, {driver_lng}")
+        
+        # 2. Clients dans l'ordre de livraison
+        clients_added = 0
+        for order in vehicle_orders:
+            lat, lng, coords_found = self._get_order_coordinates_unified(order)
+            
+            if coords_found:
+                waypoint = {
+                    'lat': float(lat),
+                    'lng': float(lng),
+                    'name': order.partner_id.name or 'Client',
+                    'address': self._get_clean_address(order.partner_id),
+                    'sequence': order.delivery_sequence,
+                    'order_name': order.name,
+                    'type': 'customer'
+                }
+                waypoints.append(waypoint)
+                clients_added += 1
+                _logger.info(f"  ✅ Client: {order.name} - Séq: {order.delivery_sequence}")
+            else:
+                _logger.warning(f"  ❌ Coordonnées manquantes: {order.name}")
+        
+        # 3. RETOUR: Position du chauffeur (fin de tournée)
+        if clients_added > 0:
+            driver_return = {
+                'lat': float(driver_lat),
+                'lng': float(driver_lng),
+                'name': f'Retour - {vehicle.driver_id.name}',
+                'address': f'Retour position chauffeur: {vehicle.driver_id.name}',
+                'sequence': len(waypoints),
+                'type': 'driver_depot_return',
+                'driver_name': vehicle.driver_id.name
+            }
+            waypoints.append(driver_return)
+            _logger.info(f"  ✅ Retour chauffeur ajouté")
+            
+            # Données véhicule pour la carte
+            vehicle_data = {
+                'vehicle_name': vehicle.name or f'Véhicule {vehicle.id}',
+                'vehicle_id': vehicle.id,
+                'driver_name': vehicle.driver_id.name if vehicle.driver_id else 'Chauffeur non assigné',
+                'driver_coords': {  # Nouvelles infos chauffeur
+                    'lat': driver_lat,
+                    'lng': driver_lng,
+                    'name': vehicle.driver_id.name
+                },
+                'waypoints': waypoints,
+                'total_stops': clients_added,
+                'vehicle_color': self._get_vehicle_color_for_map(vehicle.id),
+                'depot_type': 'driver_based'  # Indicateur du type de dépôt
+            }
+            vehicles_data.append(vehicle_data)
+            
+            _logger.info(f"✅ {vehicle.name} - {len(waypoints)} waypoints, dépôt: chauffeur")
+        else:
+            _logger.warning(f"❌ Véhicule {vehicle.name} ignoré - aucun client valide")
+    
+    _logger.info(f"=== DONNÉES CARTE FINALES ===")
+    _logger.info(f"Véhicules avec dépôts chauffeurs: {len(vehicles_data)}")
+    
+    return vehicles_data
+
+ def action_show_map(self):
+    """MODIFIÉ: Affichage carte avec nouvelles données chauffeur"""
+    selected_orders = self.browse(self.env.context.get('active_ids', []))
+    
+    _logger.info("=== AFFICHAGE CARTE AVEC DÉPÔTS CHAUFFEURS ===")
+    _logger.info(f"Commandes sélectionnées: {len(selected_orders)}")
+    
+    if not selected_orders:
+        raise UserError("Veuillez sélectionner au moins une commande")
+    
+    # Vérifier qu'il y a des commandes optimisées
+    optimized_orders = selected_orders.filtered('assigned_vehicle_id')
+    if not optimized_orders:
+        raise UserError(
+            "Aucune commande optimisée trouvée. "
+            "Veuillez d'abord lancer l'optimisation des livraisons avec dépôts chauffeurs."
+        )
+    
+    # Préparer les données avec dépôts chauffeurs
+    vehicles_data = self._prepare_map_data_corrected(selected_orders)
+    
+    _logger.info(f"Données préparées: {len(vehicles_data)} véhicules")
+    
+    # Validation spéciale pour dépôts chauffeurs
+    if not vehicles_data:
+        raise UserError(
+            "Aucune donnée d'itinéraire générée. "
+            "Vérifiez que les chauffeurs ont des coordonnées GPS dans leurs fiches contact."
+        )
+    
+    # Vérification que chaque véhicule a des waypoints valides
+    valid_vehicles = []
+    for vehicle_data in vehicles_data:
+        waypoints = vehicle_data.get('waypoints', [])
+        driver_coords = vehicle_data.get('driver_coords', {})
+        
+        if waypoints and len(waypoints) > 1 and driver_coords:
+            valid_vehicles.append(vehicle_data)
+            _logger.info(f"✅ {vehicle_data['vehicle_name']} valide - {len(waypoints)} waypoints")
+        else:
+            _logger.warning(f"❌ {vehicle_data.get('vehicle_name', 'Unknown')} ignoré")
+    
+    if not valid_vehicles:
+        raise UserError(
+            "Aucun itinéraire valide trouvé. "
+            "Vérifiez les coordonnées des chauffeurs et des clients."
+        )
+    
+    # Sérialisation JSON avec données chauffeurs
+    try:
+        import json
+        vehicles_json = json.dumps(valid_vehicles, ensure_ascii=False, indent=2)
+        _logger.info(f"JSON généré pour {len(valid_vehicles)} véhicules avec dépôts chauffeurs")
+    except Exception as e:
+        _logger.error(f"❌ ERREUR SÉRIALISATION JSON: {e}")
+        raise UserError(f"Erreur génération données carte: {e}")
+    
+    # Créer l'enregistrement map view
+    try:
+        map_view = self.env['vrp.map.view'].create({
+            'vehicles_data': vehicles_json
+        })
+        _logger.info(f"✅ Map View créé avec dépôts chauffeurs: ID {map_view.id}")
+    except Exception as e:
+        _logger.error(f"❌ ERREUR CRÉATION MAP VIEW: {e}")
+        raise UserError(f"Erreur création vue carte: {e}")
+    
+    return {
+        'type': 'ir.actions.act_window',
+        'name': 'Carte Itinéraires VRP - Dépôts Chauffeurs',
+        'res_model': 'vrp.map.view',
+        'res_id': map_view.id,
+        'view_mode': 'form',
+        'target': 'new',
+        'context': {
+            'dialog_size': 'large',
+            'default_vehicles_data': valid_vehicles,
+            'depot_type': 'driver_based'
+        }
+    }
+
+ def action_test_driver_coordinates(self):
+    """NOUVEAU: Tester les coordonnées des chauffeurs"""
+    vehicles = self.env['fleet.vehicle'].search([
+        ('driver_id', '!=', False),
+        ('active', '=', True)
+    ])
+    
+    if not vehicles:
+        raise UserError("Aucun véhicule avec chauffeur trouvé")
+    
+    results = []
+    for vehicle in vehicles:
+        driver_lat, driver_lng, coords_found = self._get_driver_coordinates_for_vehicle(vehicle)
+        
+        results.append({
+            'vehicle': vehicle.name,
+            'driver': vehicle.driver_id.name,
+            'coordinates_found': coords_found,
+            'lat': driver_lat if coords_found else 'N/A',
+            'lng': driver_lng if coords_found else 'N/A'
+        })
+    
+    # Créer un message détaillé
+    message_lines = ["=== TEST COORDONNÉES CHAUFFEURS ===\n"]
+    valid_count = 0
+    
+    for result in results:
+        status = "✅" if result['coordinates_found'] else "❌"
+        message_lines.append(
+            f"{status} {result['vehicle']} - {result['driver']}: "
+            f"{result['lat']}, {result['lng']}"
+        )
+        if result['coordinates_found']:
+            valid_count += 1
+    
+    message_lines.append(f"\nRésultat: {valid_count}/{len(results)} chauffeurs géolocalisés")
+    
+    if valid_count == 0:
+        message_lines.append("\n⚠️  ATTENTION: Aucun chauffeur géolocalisé!")
+        message_lines.append("Ajoutez des coordonnées GPS dans les fiches contact des chauffeurs.")
+    
+    message = "\n".join(message_lines)
+    
+    return {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': f'Test Coordonnées Chauffeurs',
+            'message': message,
+            'type': 'success' if valid_count > 0 else 'warning',
+            'sticky': True,
+        }
+    }
 
 
-    def _get_order_coordinates_unified(self, order):
+ def _get_order_coordinates_unified(self, order):
         """Méthode unifiée pour récupérer les coordonnées d'une commande"""
         lat, lng = 0.0, 0.0
         coords_found = False
@@ -87,48 +416,9 @@ class SaleOrder(models.Model):
         
         return lat, lng, coords_found
 
-    def action_optimize_delivery_enhanced(self):
-        """Action d'optimisation améliorée"""
-        selected_orders = self.browse(self.env.context.get('active_ids', []))
-        
-        if not selected_orders:
-            raise UserError("Veuillez sélectionner au moins une commande")
-        
-        # Vérifier les coordonnées avec la nouvelle méthode unifiée
-        orders_without_coords = []
-        for order in selected_orders:
-            lat, lng, coords_found = self._get_order_coordinates_unified(order)
-            if not coords_found:
-                orders_without_coords.append(order)
-        
-        if orders_without_coords:
-            raise UserError(
-                f"Les clients suivants n'ont pas de coordonnées : "
-                f"{', '.join(orders_without_coords.mapped('partner_id.name'))}"
-            )
-        
-        # Récupérer les véhicules disponibles
-        vehicles = self.env['fleet.vehicle'].search([
-            ('driver_id', '!=', False),
-            ('active', '=', True)
-        ])
-        
-        if not vehicles:
-            raise UserError("Aucun véhicule avec chauffeur disponible")
-        
-        # Lancer l'optimisation avec le nouvel optimiseur
-        optimizer = self.env['vrp.optimizer.enhanced'].create({})
-        result = optimizer.solve_vrp_with_road_distances(selected_orders, vehicles)
-        
-        if not result or 'routes' not in result:
-            raise UserError("Impossible de trouver une solution optimale")
-        
-        # Appliquer les résultats
-        self._apply_optimization_results_enhanced(selected_orders, result, vehicles)
-        
-        return self._reload_view_with_grouping()
+   
 
-    def _apply_optimization_results_enhanced(self, orders, optimization_result, vehicles):
+ def _apply_optimization_results_enhanced(self, orders, optimization_result, vehicles):
      """Application des résultats d'optimisation améliorée avec debugging complet"""
     
      _logger.info("=== APPLICATION RÉSULTATS OPTIMISATION ===")
@@ -219,7 +509,7 @@ class SaleOrder(models.Model):
         'unassigned_count': len(unassigned_orders)
      }
 
-    def _reload_view_with_grouping(self):
+ def _reload_view_with_grouping(self):
         """Recharger la vue avec groupement par véhicule"""
         return {
             'type': 'ir.actions.act_window',
@@ -234,110 +524,9 @@ class SaleOrder(models.Model):
             }
         }
 
-    def _prepare_map_data_corrected(self, orders):
-     """CORRIGÉ: Préparation des données carte - RESPECTER L'ORDRE D'OPTIMISATION"""
-     depot_coords = self._get_depot_coordinates()
-     vehicles_data = []
-    
-     _logger.info("=== PRÉPARATION DONNÉES CARTE CORRIGÉE ===")
-     _logger.info(f"Dépôt configuré: {depot_coords}")
-     _logger.info(f"Commandes reçues: {len(orders)}")
-    
-    # Filtrer seulement les commandes optimisées
-     optimized_orders = orders.filtered('assigned_vehicle_id')
-    
-     if not optimized_orders:
-        _logger.warning("Aucune commande optimisée trouvée pour la carte")
-        return vehicles_data
-    
-     _logger.info(f"Commandes optimisées: {len(optimized_orders)}")
-    
-    # Grouper par véhicule
-     vehicles = optimized_orders.mapped('assigned_vehicle_id')
-     _logger.info(f"Véhicules trouvés: {[v.name for v in vehicles]}")
-     
-     for vehicle in vehicles:
-        if not vehicle:
-            continue
-        
-        # CRUCIAL: Trier par delivery_sequence pour respecter l'optimisation
-        vehicle_orders = optimized_orders.filtered(lambda o: o.assigned_vehicle_id == vehicle)
-        vehicle_orders = vehicle_orders.sorted(lambda x: x.delivery_sequence or 0)
-        
-        _logger.info(f"=== VÉHICULE {vehicle.name} ===")
-        _logger.info(f"Commandes triées par séquence: {[(o.name, o.delivery_sequence) for o in vehicle_orders]}")
-        
-        waypoints = []
-        
-        # 1. TOUJOURS commencer par le dépôt (séquence 0)
-        depot_waypoint = {
-            'lat': float(depot_coords['latitude']),
-            'lng': float(depot_coords['longitude']),
-            'name': 'Dépôt - Départ',
-            'address': 'Point de départ des livraisons',
-            'sequence': 0,
-            'type': 'depot'
-        }
-        waypoints.append(depot_waypoint)
-        _logger.info(f"  ✅ Dépôt ajouté: {depot_waypoint['lat']}, {depot_waypoint['lng']}")
-        
-        # 2. Ajouter les clients dans l'ORDRE EXACT de delivery_sequence
-        clients_added = 0
-        for order in vehicle_orders:
-            lat, lng, coords_found = self._get_order_coordinates_unified(order)
-            
-            if coords_found:
-                waypoint = {
-                    'lat': float(lat),
-                    'lng': float(lng),
-                    'name': order.partner_id.name or 'Client',
-                    'address': self._get_clean_address(order.partner_id),
-                    'sequence': order.delivery_sequence,  # CRUCIAL: utiliser la vraie séquence
-                    'order_name': order.name,
-                    'type': 'customer'
-                }
-                waypoints.append(waypoint)
-                clients_added += 1
-                _logger.info(f"  ✅ Client ajouté: {order.name} - Séq: {order.delivery_sequence} - Coords: {lat}, {lng}")
-            else:
-                _logger.warning(f"  ❌ Coordonnées manquantes: {order.name}")
-        
-        # 3. Retour au dépôt (optionnel selon votre algorithme)
-        if clients_added > 0:
-            depot_return = {
-                'lat': float(depot_coords['latitude']),
-                'lng': float(depot_coords['longitude']),
-                'name': 'Dépôt - Retour',
-                'address': 'Retour au dépôt',
-                'sequence': len(waypoints),  # Dernière séquence
-                'type': 'depot_return'
-            }
-            waypoints.append(depot_return)
-            _logger.info(f"  ✅ Retour dépôt ajouté: séquence {len(waypoints)}")
-            
-            # Données véhicule pour la carte
-            vehicle_data = {
-                'vehicle_name': vehicle.name or f'Véhicule {vehicle.id}',
-                'vehicle_id': vehicle.id,
-                'driver_name': vehicle.driver_id.name if vehicle.driver_id else 'Chauffeur non assigné',
-                'waypoints': waypoints,  # ORDRE CRUCIAL RESPECTÉ
-                'total_stops': clients_added,  # Nombre de clients seulement
-                'vehicle_color': self._get_vehicle_color_for_map(vehicle.id)
-            }
-            vehicles_data.append(vehicle_data)
-            
-            _logger.info(f"✅ Véhicule {vehicle.name} - {len(waypoints)} waypoints dans l'ordre")
-        else:
-            _logger.warning(f"❌ Véhicule {vehicle.name} ignoré - aucun client valide")
-    
-     _logger.info(f"=== DONNÉES CARTE FINALES ===")
-     _logger.info(f"Véhicules traités: {len(vehicles_data)}")
-     for v_data in vehicles_data:
-        _logger.info(f"  {v_data['vehicle_name']}: {len(v_data['waypoints'])} waypoints, {v_data['total_stops']} clients")
-    
-     return vehicles_data
+   
 
-    def _get_clean_address(self, partner):
+ def _get_clean_address(self, partner):
      """Obtenir une adresse propre du partenaire"""
      if not partner:
         return 'Adresse non disponible'
@@ -354,12 +543,12 @@ class SaleOrder(models.Model):
     
      return ', '.join(address_parts) if address_parts else partner.name or 'Adresse non disponible'
     
-    def debug_optimization_sequence(self):
+ def debug_optimization_sequence(self):
      """Debug pour vérifier la cohérence des séquences"""
      for order in self.filtered('assigned_vehicle_id'):
         _logger.info(f"Commande {order.name}: Véhicule {order.assigned_vehicle_id.name}, Séquence {order.delivery_sequence}")
 
-    def debug_optimization_vs_map_data(self, orders):
+ def debug_optimization_vs_map_data(self, orders):
         """MÉTHODE DEBUG: Comparer optimisation vs données carte"""
         _logger.info("=== DEBUG: OPTIMISATION VS CARTE ===")
         
@@ -381,87 +570,8 @@ class SaleOrder(models.Model):
                 for waypoint in map_data[0]['waypoints']:
                     _logger.info(f"  Séq {waypoint['sequence']}: {waypoint['name']}")
 
-    def action_show_map(self):
-     """CORRIGÉ: Affichage carte avec données complètes"""
-     selected_orders = self.browse(self.env.context.get('active_ids', []))
-    
-     _logger.info("=== ACTION_SHOW_MAP CORRIGÉ ===")
-     _logger.info(f"Commandes sélectionnées: {len(selected_orders)}")
-    
-     if not selected_orders:
-        raise UserError("Veuillez sélectionner au moins une commande")
-    
-    # Vérifier qu'il y a des commandes optimisées
-     optimized_orders = selected_orders.filtered('assigned_vehicle_id')
-     if not optimized_orders:
-        raise UserError(
-            "Aucune commande optimisée trouvée. "
-            "Veuillez d'abord lancer l'optimisation des livraisons."
-        )
-    
-    # Préparer les données avec la méthode corrigée
-     vehicles_data = self._prepare_map_data_corrected(selected_orders)
-    
-     _logger.info(f"Données préparées: {len(vehicles_data)} véhicules")
-    
-    # Log détaillé des données
-     for i, vehicle_data in enumerate(vehicles_data):
-        _logger.info(f"Véhicule {i}: {vehicle_data.get('vehicle_name')} - {len(vehicle_data.get('waypoints', []))} waypoints")
-        for waypoint in vehicle_data.get('waypoints', [])[:3]:  # Log des 3 premiers waypoints
-            _logger.info(f"  Waypoint: {waypoint.get('name')} - Seq: {waypoint.get('sequence')} - Coords: {waypoint.get('lat')}, {waypoint.get('lng')}")
-    
-    # Validation des données avant sérialisation
-     if not vehicles_data or len(vehicles_data) == 0:
-        raise UserError("Aucune donnée d'itinéraire générée. Vérifiez l'optimisation.")
-    
-    # Vérifier que chaque véhicule a des waypoints
-     valid_vehicles = []
-     for vehicle_data in vehicles_data:
-        waypoints = vehicle_data.get('waypoints', [])
-        if waypoints and len(waypoints) > 1:  # Au moins 2 points (dépôt + 1 client)
-            valid_vehicles.append(vehicle_data)
-            _logger.info(f"✅ Véhicule {vehicle_data['vehicle_name']} valide avec {len(waypoints)} waypoints")
-        else:
-            _logger.warning(f"❌ Véhicule {vehicle_data.get('vehicle_name', 'Unknown')} ignoré - waypoints insuffisants")
-    
-     if not valid_vehicles:
-        raise UserError("Aucun itinéraire valide trouvé. Vérifiez les coordonnées des clients.")
-    
-    # Sérialisation JSON sécurisée
-     try:
-        import json
-        vehicles_json = json.dumps(valid_vehicles, ensure_ascii=False, indent=2)
-        _logger.info(f"JSON généré: {len(vehicles_json)} caractères")
-        _logger.info(f"Extrait JSON: {vehicles_json[:300]}...")
-     except Exception as e:
-        _logger.error(f"❌ ERREUR SÉRIALISATION JSON: {e}")
-        raise UserError(f"Erreur lors de la génération des données carte: {e}")
-    
-    # Créer l'enregistrement map view
-     try:
-        map_view = self.env['vrp.map.view'].create({
-            'vehicles_data': vehicles_json
-        })
-        _logger.info(f"✅ VRP Map View créé avec ID: {map_view.id}")
-     except Exception as e:
-        _logger.error(f"❌ ERREUR CRÉATION MAP VIEW: {e}")
-        raise UserError(f"Erreur lors de la création de la vue carte: {e}")
-    
-     return {
-        'type': 'ir.actions.act_window',
-        'name': 'Carte des Itinéraires VRP - CORRIGÉE',
-        'res_model': 'vrp.map.view',
-        'res_id': map_view.id,
-        'view_mode': 'form',
-        'target': 'new',
-        'context': {
-            'dialog_size': 'large',
-            'default_vehicles_data': valid_vehicles
-        }
-     }
 
-
-    def _get_vehicle_color_for_map(self, vehicle_id):
+ def _get_vehicle_color_for_map(self, vehicle_id):
         """Attribuer une couleur unique à chaque véhicule"""
         colors = [
             '#e74c3c',  # Rouge
@@ -475,8 +585,7 @@ class SaleOrder(models.Model):
         ]
         return colors[vehicle_id % len(colors)]
     
-
-    def action_debug_vrp_flow_complete(self):
+ def action_debug_vrp_flow_complete(self):
      """DEBUG COMPLET: Tester tout le flux VRP étape par étape"""
      selected_orders = self.browse(self.env.context.get('active_ids', []))
     
@@ -603,7 +712,7 @@ class SaleOrder(models.Model):
      }
     
 
-    def action_create_test_coordinates(self):
+ def action_create_test_coordinates(self):
      """Créer des coordonnées de test pour les clients des commandes sélectionnées"""
      selected_orders = self.browse(self.env.context.get('active_ids', []))
     
@@ -647,3 +756,133 @@ class SaleOrder(models.Model):
      }
     
    
+
+ def action_setup_driver_coordinates(self):
+    """NOUVEAU: Configurer les coordonnées GPS des chauffeurs"""
+    vehicles = self.env['fleet.vehicle'].search([
+        ('driver_id', '!=', False),
+        ('active', '=', True)
+    ])
+    
+    if not vehicles:
+        raise UserError("Aucun véhicule avec chauffeur trouvé")
+    
+    # Coordonnées de test dans différentes zones du Maroc
+    test_coordinates_morocco = [
+        {'lat': 34.0209, 'lng': -6.8416, 'city': 'Rabat Centre'},
+        {'lat': 33.9716, 'lng': -6.8498, 'city': 'Salé'},
+        {'lat': 34.0531, 'lng': -6.7985, 'city': 'Témara'},
+        {'lat': 34.2610, 'lng': -6.5802, 'city': 'Kénitra'},
+        {'lat': 33.5731, 'lng': -7.5898, 'city': 'Casablanca'},
+        {'lat': 31.6295, 'lng': -7.9811, 'city': 'Marrakech'},
+        {'lat': 35.7595, 'lng': -5.8340, 'city': 'Tanger'},
+        {'lat': 34.6867, 'lng': -1.9114, 'city': 'Oujda'},
+        {'lat': 32.8800, 'lng': -6.9200, 'city': 'Beni Mellal'},
+        {'lat': 35.1681, 'lng': -5.2683, 'city': 'Al Hoceima'}
+    ]
+    
+    drivers_updated = 0
+    for i, vehicle in enumerate(vehicles):
+        if vehicle.driver_id:
+            # Vérifier si le chauffeur a déjà des coordonnées
+            existing_lat, existing_lng, has_coords = self._get_driver_coordinates_for_vehicle(vehicle)
+            
+            if not has_coords:
+                # Assigner des coordonnées de test
+                coord_index = i % len(test_coordinates_morocco)
+                test_coord = test_coordinates_morocco[coord_index]
+                
+                # Utiliser la méthode du partenaire pour définir les coordonnées
+                success = vehicle.driver_id.set_coordinates(
+                    test_coord['lat'], 
+                    test_coord['lng']
+                )
+                
+                if success:
+                    drivers_updated += 1
+                    _logger.info(f"✅ Coordonnées assignées à {vehicle.driver_id.name}: {test_coord['city']}")
+                else:
+                    _logger.warning(f"❌ Échec assignation pour {vehicle.driver_id.name}")
+            else:
+                _logger.info(f"⚪ {vehicle.driver_id.name} a déjà des coordonnées")
+    
+    message = f"Configuration terminée:\n"
+    message += f"• {drivers_updated} chauffeurs mis à jour\n"
+    message += f"• {len(vehicles) - drivers_updated} chauffeurs avaient déjà des coordonnées\n"
+    message += f"• Total véhicules traités: {len(vehicles)}"
+    
+    return {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Configuration Chauffeurs Terminée',
+            'message': message,
+            'type': 'success' if drivers_updated > 0 else 'info',
+            'sticky': True,
+        }
+    }
+
+ def action_validate_driver_system(self):
+    """NOUVEAU: Valider que le système dépôts chauffeurs est prêt"""
+    vehicles = self.env['fleet.vehicle'].search([
+        ('driver_id', '!=', False),
+        ('active', '=', True)
+    ])
+    
+    if not vehicles:
+        raise UserError("Aucun véhicule avec chauffeur configuré")
+    
+    validation_results = {
+        'total_vehicles': len(vehicles),
+        'valid_drivers': 0,
+        'invalid_drivers': [],
+        'ready_for_optimization': False
+    }
+    
+    for vehicle in vehicles:
+        lat, lng, coords_found = self._get_driver_coordinates_for_vehicle(vehicle)
+        
+        if coords_found:
+            validation_results['valid_drivers'] += 1
+        else:
+            validation_results['invalid_drivers'].append({
+                'vehicle': vehicle.name,
+                'driver': vehicle.driver_id.name,
+                'driver_id': vehicle.driver_id.id
+            })
+    
+    validation_results['ready_for_optimization'] = (
+        validation_results['valid_drivers'] > 0 and 
+        len(validation_results['invalid_drivers']) == 0
+    )
+    
+    # Créer message détaillé
+    message_lines = [
+        "=== VALIDATION SYSTÈME DÉPÔTS CHAUFFEURS ===\n",
+        f"Véhicules total: {validation_results['total_vehicles']}",
+        f"Chauffeurs géolocalisés: {validation_results['valid_drivers']}",
+        f"Chauffeurs sans coordonnées: {len(validation_results['invalid_drivers'])}"
+    ]
+    
+    if validation_results['invalid_drivers']:
+        message_lines.append("\n❌ CHAUFFEURS À GÉOLOCALISER:")
+        for invalid in validation_results['invalid_drivers']:
+            message_lines.append(f"• {invalid['vehicle']} - {invalid['driver']}")
+    
+    if validation_results['ready_for_optimization']:
+        message_lines.append(f"\n✅ SYSTÈME PRÊT pour optimisation VRP!")
+    else:
+        message_lines.append(f"\n⚠️  Configurez d'abord tous les chauffeurs")
+    
+    message = "\n".join(message_lines)
+    
+    return {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Validation Système Chauffeurs',
+            'message': message,
+            'type': 'success' if validation_results['ready_for_optimization'] else 'warning',
+            'sticky': True,
+        }
+    }
