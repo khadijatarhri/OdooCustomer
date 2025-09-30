@@ -4,34 +4,8 @@
     <menuitem id="vrp_main_menu"  
               name="VRP"  
               sequence="10"  
-              web_icon="delivery_vrp,static/description/VRP.png"/>  
-  
-    <!-- Sous-menu Configuration -->  
-    <menuitem id="vrp_config_menu"  
-              name="Configuration"  
-              parent="vrp_main_menu"  
-              sequence="10"/>  
-  
-    <menuitem id="vrp_customer_menu"  
-          name="Clients"  
-          parent="vrp_config_menu"  
-          action="vrp_order_action"  
-          sequence="5"/>  
-
-  
-<!-- Menu Véhicules (maintenant en second) -->  
-    <menuitem id="vrp_vehicle_menu"  
-          name="Véhicules"  
-          parent="vrp_config_menu"  
-          action="vrp_vehicle_action"  
-          sequence="10"/> 
-  
-    <!-- Sous-menu Opérations -->  
-    <menuitem id="vrp_operations_menu"  
-              name="Opérations"  
-              parent="vrp_main_menu"  
-              sequence="20"/>  
-  
+              action="vrp_customer_action"
+              web_icon="delivery_vrp/static/description/VRP.png"/>  
   
 
 </odoo>
