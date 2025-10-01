@@ -73,6 +73,9 @@ docker-compose up -d
 ![9](VRPModuleScreens/manualAssignement2.png)
 ![10](VRPModuleScreens/manualAssignment.png)
 ![11](VRPModuleScreens/startOptimization.png)
-![11](VRPModuleScreens/vehiculesFromFleet.png)
+![12](VRPModuleScreens/vehiculesFromFleet.png)
+![13](VRPModuleScreens/map1.png)
+![14](VRPModuleScreens/map2.png)
+
 
 
