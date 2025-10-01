@@ -58,3 +58,21 @@ docker-compose up -d
 - Retirer le filtre "Apps" dans la recherche
 - Chercher "VRP"
 - Cliquer sur Install
+
+
+
+### Login : Connexion à la plateforme.
+![1](VRPModuleScreens/Customer1.2.png)
+![2](VRPModuleScreens/CustomerFromContact.png)
+![3](VRPModuleScreens/DoingTheOptimization.png)
+![4](VRPModuleScreens/TheOptimizationOutput.png)
+![5](VRPModuleScreens/ToviewTheMAp.png)
+![6](VRPModuleScreens/clientInVRP.png)
+![7](VRPModuleScreens/creatinganorder.png)
+![8](VRPModuleScreens/driver1user1fromSettings.png)
+![9](VRPModuleScreens/manualAssignement2.png)
+![10](VRPModuleScreens/manualAssignment.png)
+![11](VRPModuleScreens/startOptimization.png)
+![11](VRPModuleScreens/vehiculesFromFleet.png)
+
+
