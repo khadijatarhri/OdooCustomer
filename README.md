@@ -37,8 +37,8 @@ The system intelligently assigns orders to available vehicles based on the geogr
 
 1. **Step 1: Clone the repository**
 ```bash
-git clone https://github.com/your-username/vrp-module.git
-cd vrp-module
+git clone https://github.com/khadijatarhri/odoo18VRPModule.git
+cd odoo18VRPModule
 ```
 
 
