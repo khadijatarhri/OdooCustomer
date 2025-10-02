@@ -103,7 +103,7 @@ Each feature is explained with screenshots for better understanding.
 - **Step 5**: Assign the vehicle to a **Driver**.  
 
 ✅ The vehicle is created.  
-Then, you can move the vehicle request from **New Request** to **Saved**.  
+Then, you can move the vehicle request from **New Request** to **Registered**.  
 Registered vehicles are now available for deliveries.  
 
 ### Screenshot
@@ -137,7 +137,7 @@ Once a customer order is created:
 
 ## 6. View Orders and Routes on the Map
 - **Step 1**: Select all orders.  
-- **Step 2**: Click **Map View**.  
+- **Step 2**: Click **Map**.  
 
 ✅ The map appears with the delivery routes.  
 
