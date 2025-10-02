@@ -157,5 +157,15 @@ You can also manually assign a vehicle to a specific order.
 ## 8. Mark Products as Picked Up
 You can mark products as **picked up** and save the changes.  
 
+---
+
+## 📜 License
+This project is licensed under the MIT License.
+
+## 👩 Author
+- **Khadija Tarhri**  
+  Software Engineering Student | Developer of VRP Odoo Module  
+  [GitHub Profile](https://github.com/khadijatarhri)
+
 
 
