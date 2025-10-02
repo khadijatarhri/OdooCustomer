@@ -4,9 +4,10 @@
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Main Features of the VRP (Vehicle Routing Problem) Module](#main-features-of-the-vrp-(vehicle-routing-problem)-module)
-- [License ](#license)
-- [Author](#author)
+- [Main Features of the VRP (Vehicle Routing Problem) Module](#main-features-of-the-vrp-vehicle-routing-problem-module)
+- [License](#-license)
+- [Author](#-author)
+
 
 ---
 
