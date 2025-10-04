@@ -1,4 +1,4 @@
-# models/res_partner.py - Ajout champ coordinates
+# models/res_partner.py 
 from odoo import models, fields, api
 import json
 import logging

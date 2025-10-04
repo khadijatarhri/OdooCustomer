@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Client marocain avec données PII -->
+        <record id="partner_morocco_test" model="res.partner">
+            <field name="name">Ahmed Bennani</field>
+            <field name="email">ahmed.bennani@test.ma</field>
+            <field name="phone">+212 600 111 222</field>
+            <field name="mobile">+212 661 333 444</field>
+            <field name="street">Boulevard Zerktouni</field>
+            <field name="street2">Résidence Les Jasmins, Apt 5</field>
+            <field name="city">Casablanca</field>
+            <field name="zip">20100</field>
+            <field name="country_id" ref="base.ma"/>
+            <field name="ref">CUST-MA-TEST-001</field>
+        </record>
+        
+        <!-- Client français pour test RGPD -->
+        <record id="partner_france_test" model="res.partner">
+            <field name="name">Sophie Martin</field>
+            <field name="email">sophie.martin@example.fr</field>
+            <field name="phone">+33 6 12 34 56 78</field>
+            <field name="street">12 Avenue des Champs-Élysées</field>
+            <field name="city">Paris</field>
+            <field name="zip">75008</field>
+            <field name="country_id" ref="base.fr"/>
+            <field name="ref">CUST-FR-TEST-001</field>
+        </record>
+        
+    </data>
+</odoo>

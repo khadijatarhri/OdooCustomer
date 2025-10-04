@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_vrp_order_all,vrp.order.all,model_vrp_order,base.group_user,1,1,1,1
 access_vrp_map_view_all,vrp.map.view.all,model_vrp_map_view,base.group_user,1,1,1,1
 access_vrp_optimizer_enhanced_all,vrp.optimizer.enhanced.all,model_vrp_optimizer_enhanced,base.group_user,1,1,1,0
+access_vrp_route_optimization_all,vrp.route.optimization.all,model_vrp_route_optimization,base.group_user,1,1,1,1

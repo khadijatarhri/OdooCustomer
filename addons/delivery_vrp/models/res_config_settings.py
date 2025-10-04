@@ -1,4 +1,4 @@
-# models/res_config_settings_corrected.py
+# models/res_config_settings.py
 from odoo import models, fields, api
 
 class ResConfigSettings(models.TransientModel):

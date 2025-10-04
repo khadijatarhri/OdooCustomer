@@ -1,34 +1,45 @@
 version: '3.8'
 
 services:
-
   web:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: odoo18
-    user: root
+    user: odoo
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8070:8069"
     volumes:
-      - ./config:/etc/odoo
+      - ./config:/etc/odoo:ro
       - ./addons:/mnt/extra-addons
-      - ./data:/var/lib/odoo
-      - ./filestore:/root/.local/share/Odoo/filestore  
+      - odoo-data:/var/lib/odoo
       - ./logs:/var/log/odoo
-      - ./kafka-addon:/mnt/extra-addons/kafka_integration:ro   
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo_password
-      - OPENAI_API_KEY=votre_cle_api_openai
-      - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:29092             
-      - KAFKA_ENABLED=true                                     
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:29092
+      - KAFKA_ENABLED=true
+      - ODOO_RC=/etc/odoo/odoo.conf
+    
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
     restart: unless-stopped
-    command: odoo --dev=reload,qweb,werkzeug,xml
+    
+    # ⭐ Commande sans db-filter restrictif
+    command: ["odoo", "--dev=reload,qweb,werkzeug,xml"]
+    
     networks:
-       default :
-       kafka-integration :
+      - default
+      - kafka-integration
 
   db:
     image: postgres:15
@@ -39,9 +50,14 @@ services:
       - POSTGRES_PASSWORD=odoo_password
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - ./postgresql:/var/lib/postgresql/data/pgdata
+      - postgresql:/var/lib/postgresql/data/pgdata
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - default
@@ -60,26 +76,17 @@ services:
     networks:
       - default
 
-  # Service optionnel : installation de l'addon Kafka (si besoin)
-  odoo-kafka-installer:
-    image: alpine:latest
-    container_name: odoo-kafka-installer
-    volumes:
-      - ../kafka-orchestrator/network-bridge/odoo-kafka-addon:/source:ro
-      - ./kafka-addon:/destination
-    command: |
-      sh -c "
-        echo '📦 Installation de l addon Kafka pour Odoo...'
-        cp -r /source/* /destination/ 2>/dev/null || true
-        echo '✅ Addon Kafka installé'
-        "
-    restart: "no"
-
 volumes:
   postgresql:
+    name: odoo18_postgresql_data
   odoo-data:
+    name: odoo18_data
 
 networks:
   default:
+    driver: bridge
+    name: odoo18_internal_network
+  
   kafka-integration:
+    external: true
     name: kafka-integration-network
